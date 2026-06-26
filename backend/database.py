@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import text
 
 from .config import DATABASE_URL
 
@@ -31,6 +32,14 @@ async def init_db():
     # 创建所有表
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # 迁移：给已存在的表添加 image_url 列（如果尚不存在）
+    async with engine.begin() as conn:
+        try:
+            await conn.execute(text("ALTER TABLE menu_items ADD COLUMN image_url VARCHAR(500) DEFAULT ''"))
+            print("[DB] 已添加 image_url 列")
+        except Exception:
+            pass  # 列已存在
 
     print("[DB] 数据库初始化完成")
 

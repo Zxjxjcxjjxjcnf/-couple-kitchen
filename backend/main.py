@@ -47,6 +47,11 @@ STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)))
 if os.path.exists(os.path.join(STATIC_DIR, "index.html")):
     app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
+# ---- 上传文件目录（菜品图片等） ----
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
 
 # ---- 启动时写入预置菜单 ----
 async def seed_menu_data():

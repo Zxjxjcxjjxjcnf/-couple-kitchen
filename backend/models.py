@@ -16,6 +16,7 @@ class MenuItem(Base):
     description = Column(String(200), default="")
     sold = Column(Integer, default=0)
     bg = Column(String(200), default="")
+    image_url = Column(String(500), default="")  # 上传的菜品图片路径
 
 
 class Order(Base):

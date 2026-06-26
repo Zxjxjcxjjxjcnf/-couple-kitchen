@@ -24,6 +24,7 @@ class MenuItemOut(BaseModel):
     description: str
     sold: int
     bg: str = ""
+    image_url: str = ""
 
     class Config:
         from_attributes = True
