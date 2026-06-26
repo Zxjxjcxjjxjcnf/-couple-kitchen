@@ -833,6 +833,111 @@
         </div>
       </div>
 
+      <!-- ======================================================== -->
+      <!-- 厨师端 · 菜单管理（chefTab === 'menu'）                  -->
+      <!-- ======================================================== -->
+      <div v-if="page === 'chef' && chefTab === 'menu'" class="flex flex-col flex-1 page-enter">
+
+        <!-- 顶部操作栏 -->
+        <div class="flex-shrink-0 px-4 pt-2 pb-2 flex items-center justify-between">
+          <h3 class="text-sm font-bold text-gray-700">📋 菜品管理</h3>
+          <button @click="showAddDishModal = true"
+                  class="text-xs font-semibold px-4 py-1.5 rounded-full text-white active:scale-95 transition-transform"
+                  style="background: linear-gradient(135deg, #f43f5e, #e11d48);">
+            ＋ 添加菜品
+          </button>
+        </div>
+
+        <!-- 菜品列表 -->
+        <div class="flex-1 overflow-y-auto scrollbar-thin px-4 pb-4">
+          <!-- 按分类分组 -->
+          <div v-for="cat in categories" :key="cat.key" class="mb-4">
+            <div class="flex items-center gap-1.5 mb-2">
+              <span class="text-sm">{{ cat.emoji }}</span>
+              <span class="text-xs font-semibold text-gray-400">{{ cat.label }}</span>
+              <span class="text-[10px] text-gray-300">({{ menuItems.filter(i => i.category === cat.key).length }})</span>
+            </div>
+            <div v-for="item in menuItems.filter(i => i.category === cat.key)" :key="item.id"
+                 class="bg-white rounded-2xl p-3 mb-2 flex items-center gap-3"
+                 style="box-shadow: 0 1px 8px rgba(0,0,0,0.04);">
+              <!-- 图片 / Emoji + 上传 -->
+              <div class="flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden relative group cursor-pointer"
+                   :style="{ background: item.bg || 'linear-gradient(135deg, #fdf2f4, #fce7eb)' }">
+                <img v-if="item.image_url" :src="item.image_url" class="w-full h-full object-cover" alt="" />
+                <span v-else class="w-full h-full flex items-center justify-center text-2xl">{{ item.emoji }}</span>
+                <button @click="uploadImage(item)" type="button"
+                        class="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/30 transition-colors text-white text-lg opacity-0 hover:opacity-100 cursor-pointer">
+                  📷
+                </button>
+              </div>
+              <!-- 信息 -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-sm font-bold text-gray-700 truncate">{{ item.name }}</h4>
+                  <span class="text-sm font-black text-rose-400 ml-2">¥{{ item.price }}</span>
+                </div>
+                <p class="text-[11px] text-gray-400 truncate mt-0.5">{{ item.desc }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="h-20"></div>
+        </div>
+      </div>
+
+      <!-- ===== 添加菜品弹窗 ===== -->
+      <transition name="modal">
+        <div v-if="showAddDishModal" @click.self="showAddDishModal = false"
+             class="fixed inset-0 z-50 flex items-center justify-center p-6 modal-bg"
+             style="background: rgba(0,0,0,0.3);">
+          <div class="w-full max-w-xs bg-white rounded-3xl p-5 modal-content" style="box-shadow: 0 20px 60px rgba(0,0,0,0.15);">
+            <h3 class="text-center text-base font-bold text-gray-700 mb-4">➕ 添加新菜品</h3>
+
+            <div class="space-y-3">
+              <!-- 菜品名 -->
+              <div>
+                <label class="text-[11px] text-gray-400 block mb-1">菜品名</label>
+                <input v-model="newDish.name" placeholder="如：宫保鸡丁"
+                       class="w-full text-sm bg-rose-50/60 rounded-xl px-3 py-2.5 text-gray-600 placeholder-gray-300 border border-rose-100/50 outline-none focus:border-rose-200 transition-colors" />
+              </div>
+              <!-- 分类 -->
+              <div>
+                <label class="text-[11px] text-gray-400 block mb-1">分类</label>
+                <select v-model="newDish.category"
+                        class="w-full text-sm bg-rose-50/60 rounded-xl px-3 py-2.5 text-gray-600 border border-rose-100/50 outline-none focus:border-rose-200 transition-colors">
+                  <option v-for="cat in categories" :key="cat.key" :value="cat.key">{{ cat.emoji }} {{ cat.label }}</option>
+                </select>
+              </div>
+              <!-- 价格 -->
+              <div>
+                <label class="text-[11px] text-gray-400 block mb-1">价格 (元)</label>
+                <input v-model.number="newDish.price" type="number" step="0.5" min="0"
+                       class="w-full text-sm bg-rose-50/60 rounded-xl px-3 py-2.5 text-gray-600 placeholder-gray-300 border border-rose-100/50 outline-none focus:border-rose-200 transition-colors" />
+              </div>
+              <!-- Emoji -->
+              <div>
+                <label class="text-[11px] text-gray-400 block mb-1">Emoji 图标</label>
+                <input v-model="newDish.emoji" placeholder="如：🍗"
+                       class="w-full text-sm bg-rose-50/60 rounded-xl px-3 py-2.5 text-gray-600 placeholder-gray-300 border border-rose-100/50 outline-none focus:border-rose-200 transition-colors" />
+              </div>
+              <!-- 描述 -->
+              <div>
+                <label class="text-[11px] text-gray-400 block mb-1">描述</label>
+                <input v-model="newDish.description" placeholder="简短描述菜品"
+                       class="w-full text-sm bg-rose-50/60 rounded-xl px-3 py-2.5 text-gray-600 placeholder-gray-300 border border-rose-100/50 outline-none focus:border-rose-200 transition-colors" />
+              </div>
+            </div>
+
+            <div class="flex gap-2 mt-4">
+              <button @click="showAddDishModal = false"
+                      class="flex-1 py-2.5 rounded-xl text-sm text-gray-400 bg-gray-50 active:scale-95 transition-transform">取消</button>
+              <button @click="addDish"
+                      class="flex-1 py-2.5 rounded-xl text-sm font-bold text-white active:scale-95 transition-transform"
+                      style="background: linear-gradient(135deg, #f43f5e, #e11d48);">确认添加</button>
+            </div>
+          </div>
+        </div>
+      </transition>
+
       <!-- ===== Toast 提示 ===== -->
       <transition name="toast">
         <div v-if="toast.show"
@@ -1013,6 +1118,12 @@
         const detailQty = ref(1);
         const detailNote = ref('');
 
+        // ---- 添加菜品弹窗 ----
+        const showAddDishModal = ref(false);
+        const newDish = ref({
+          name: '', category: 'meat', price: 0, emoji: '🍽️', description: '',
+        });
+
         // ---- 订单 ----
         const orders = ref([]);
 
@@ -1039,6 +1150,7 @@
           { key: 'pending',   label: '待接单' },
           { key: 'cooking',   label: '制作中' },
           { key: 'completed', label: '已完成' },
+          { key: 'menu',      label: '📋 菜单' },
         ];
 
         // ---- 菜单数据（优先从 API 加载，fallback 到本地） ----
@@ -1085,6 +1197,48 @@
             }
           };
           input.click();
+        }
+
+        // ---- 添加新菜品 ----
+        async function addDish() {
+          if (!newDish.value.name.trim()) {
+            showToast('请输入菜品名', '⚠️');
+            return;
+          }
+          if (!newDish.value.price || newDish.value.price <= 0) {
+            showToast('请输入有效价格', '⚠️');
+            return;
+          }
+          // 优先调用 API，失败则本地添加
+          try {
+            const created = await apiPost('/api/menu', {
+              name: newDish.value.name.trim(),
+              category: newDish.value.category,
+              price: newDish.value.price,
+              emoji: newDish.value.emoji || '🍽️',
+              description: newDish.value.description || '',
+            });
+            menuItems.value.push(created);
+            showToast(`✅ 已添加「${created.name}」`, '🎉');
+          } catch (e) {
+            // API 不可用，本地添加（带临时 id）
+            const localId = Date.now();
+            const localDish = {
+              id: localId,
+              name: newDish.value.name.trim(),
+              category: newDish.value.category,
+              price: newDish.value.price,
+              emoji: newDish.value.emoji || '🍽️',
+              description: newDish.value.description || '',
+              sold: 0, image_url: '',
+              bg: 'linear-gradient(135deg, #fdf2f4, #fce7eb)',
+            };
+            menuItems.value.push(localDish);
+            showToast(`✅ 已添加「${localDish.name}」(本地)`, '🎉');
+          }
+          // 重置表单
+          newDish.value = { name: '', category: 'meat', price: 0, emoji: '🍽️', description: '' };
+          showAddDishModal.value = false;
         }
 
         // ---- 计算属性 ----
@@ -1150,8 +1304,9 @@
           showCartPanel.value = false;
           // 切换 WebSocket 角色
           connectWebSocket('chef');
-          // 刷新订单
+          // 刷新订单 + 菜单
           loadOrders();
+          loadMenu();
         }
 
         // ============================================================
@@ -1488,9 +1643,10 @@
 
         return {
           // 状态
-          page, guestCategory, chefTab,
+          page, guestCategory, chefTab, menuItems,
           cart, showCartPanel, showSubmitModal, orderNote,
           detailItem, detailQty, detailNote,
+          showAddDishModal, newDish, addDish,
           orders, toast,
           showInstallBanner, showInstallGuide, isStandalone, canInstall,
           firebaseReady,
