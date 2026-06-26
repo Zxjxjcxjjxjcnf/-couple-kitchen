@@ -14,12 +14,12 @@ from .routes.orders import router as orders_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用启动/关闭生命周期"""
-    print("❤️ 情侣私厨 后端启动中...")
+    print("[OK] Couple Kitchen 后端启动中...")
     await init_db()
     await seed_menu_data()
-    print("❤️ 情侣私厨 后端就绪 (http://localhost:8000)")
+    print("[OK] Couple Kitchen 后端就绪 (http://localhost:8000)")
     yield
-    print("❤️ 情侣私厨 后端关闭")
+    print("[OK] Couple Kitchen 后端关闭")
 
 
 app = FastAPI(
