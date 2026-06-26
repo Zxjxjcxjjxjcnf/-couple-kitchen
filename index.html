@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <!-- ===== iOS / Android 通用 ===== -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>❤️ 情侣私厨点餐</title>
+
+  <!-- ==============================================================
+       PWA 关键 Meta 标签（iOS Safari「添加到主屏幕」必须）
+       ============================================================== -->
+
+  <!-- 开启 standalone 全屏模式（去掉 Safari 地址栏/工具栏） -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+
+  <!-- 状态栏样式：
+       default    = 白色背景 + 黑色文字（与 app 背景不搭）
+       black      = 黑色背景 + 白色文字
+       black-translucent = 透明背景，网页内容延伸到状态栏下方（最推荐，沉浸感最强） -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- 主屏幕图标显示的名称（代替 <title>） -->
+  <meta name="apple-mobile-web-app-title" content="情侣私厨" />
+
+  <!-- Android 主题色（也会影响 iOS 顶部栏颜色） -->
+  <meta name="theme-color" content="#f43f5e" />
+  <meta name="msapplication-TileColor" content="#f43f5e" />
+  <meta name="application-name" content="情侣私厨" />
+
+  <!-- apple-touch-icon 会在页面加载后通过 Canvas 动态生成 PNG 并注入，见下方脚本 -->
+
+  <!-- 告知搜索引擎这是一个 Web App -->
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- PWA 清单（Android 安装必须，iOS 15+ 也读取） -->
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- ===== Tailwind CSS ===== -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { cozy: ['"Noto Sans SC"', '"PingFang SC"', '"Microsoft YaHei"', 'system-ui', 'sans-serif'] },
+          colors: { cream: '#FFF9F5', warm: '#FFF5F0' },
+          animation: {
+            'bounce-soft': 'bounceSoft 2s ease-in-out infinite',
+            'float': 'float 3s ease-in-out infinite',
+          },
+          keyframes: {
+            bounceSoft: { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-4px)' } },
+            float: { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-8px)' } },
+          },
+        },
+      },
+    }
+  </script>
+
+  <!-- ===== Fonts ===== -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
+
+  <!-- ===== 全局样式 ===== -->
+  <style>
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+      background: #FFF9F5;
+      /* 安全区适配：iOS 刘海屏/底部指示条 */
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    [v-cloak] { display: none !important; }
+
+    .scrollbar-thin::-webkit-scrollbar { width: 2px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(244,63,94,0.2); border-radius: 99px; }
+
+    /* 安全区域工具类 */
+    .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+    .pb-safe { padding-bottom: env(safe-area-inset-bottom, 6px); }
+
+    /* 页面入场 */
+    .page-enter { animation: fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+
+    /* 弹窗入场 */
+    .modal-bg { animation: fadeIn 0.2s ease-out; }
+    .modal-content { animation: popIn 0.25s ease-out; }
+    @keyframes popIn { 0% { transform: scale(0.92); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+    /* 面板入场 */
+    .panel-in { animation: slideUp 0.3s ease-out; }
+    @keyframes slideUp { 0% { transform: translateY(100%); } 100% { transform: translateY(0); } }
+
+    /* Toast */
+    .toast-in { animation: toastIn 0.25s ease-out; }
+    @keyframes toastIn { 0% { opacity: 0; transform: translateY(-12px) translateX(-50%); } 100% { opacity: 1; transform: translateY(0) translateX(-50%); } }
+
+    /* 卡片点击反馈 */
+    .card-hover { transition: transform 0.15s, box-shadow 0.15s; }
+    .card-hover:active { transform: scale(0.97); }
+    .cat-tab { transition: all 0.15s; }
+    .cat-tab:active { transform: scale(0.95); }
+    .btn-press:active { transform: scale(0.95); }
+
+    /* 安装横幅滑动 */
+    .banner-slide { animation: bannerSlide 0.35s ease-out; }
+    @keyframes bannerSlide { 0% { transform: translateY(-100%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================
+       PWA 图标生成器 — 页面加载即刻生成真实 PNG 图标
+       因为 iOS Safari 对 SVG apple-touch-icon 支持不稳定，
+       我们用 Canvas 绘制纯正 PNG，注入到 <head> 中。
+       ============================================================ -->
+  <script>
+    (function generatePWA_Icons() {
+      try {
+        var sizes = [120, 152, 167, 180, 192, 512];
+        var links = [];
+
+        sizes.forEach(function (size) {
+          var c = document.createElement('canvas');
+          c.width = size;
+          c.height = size;
+          var ctx = c.getContext('2d');
+
+          var r = size * 0.18;   // 圆角半径
+          var half = size / 2;
+
+          // --- 背景圆角矩形 ---
+          var grad = ctx.createLinearGradient(0, 0, size, size);
+          grad.addColorStop(0, '#f43f5e');
+          grad.addColorStop(1, '#e11d48');
+          ctx.fillStyle = grad;
+
+          ctx.beginPath();
+          ctx.moveTo(r, 0);
+          ctx.lineTo(size - r, 0);
+          ctx.quadraticCurveTo(size, 0, size, r);
+          ctx.lineTo(size, size - r);
+          ctx.quadraticCurveTo(size, size, size - r, size);
+          ctx.lineTo(r, size);
+          ctx.quadraticCurveTo(0, size, 0, size - r);
+          ctx.lineTo(0, r);
+          ctx.quadraticCurveTo(0, 0, r, 0);
+          ctx.closePath();
+          ctx.fill();
+
+          // --- 阴影内圈（加强立体感） ---
+          ctx.shadowColor = 'rgba(0,0,0,0.15)';
+          ctx.shadowBlur = size * 0.04;
+          ctx.beginPath();
+          ctx.arc(half, half, half * 0.72, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255,255,255,0.10)';
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // --- 白色圆形底托 ---
+          ctx.beginPath();
+          ctx.arc(half, half, half * 0.62, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255,255,255,0.92)';
+          ctx.fill();
+
+          // --- 画一个炒锅（比纯 emoji 渲染更可靠） ---
+          ctx.shadowColor = 'rgba(0,0,0,0.06)';
+          ctx.shadowBlur = size * 0.02;
+
+          // 锅体
+          var cx = half;
+          var cy = half + size * 0.04;
+          var panR = size * 0.30;
+
+          ctx.beginPath();
+          ctx.arc(cx, cy, panR, 0, Math.PI * 2);
+          ctx.fillStyle = '#4a5568';
+          ctx.fill();
+
+          // 锅沿高光
+          ctx.beginPath();
+          ctx.arc(cx, cy - size * 0.02, panR * 0.88, 0, Math.PI * 2);
+          ctx.fillStyle = '#2d3748';
+          ctx.fill();
+
+          // 锅把
+          var handleX = cx + panR + size * 0.06;
+          var handleY = cy - size * 0.08;
+          ctx.shadowBlur = size * 0.01;
+          ctx.fillStyle = '#1a202c';
+          ctx.beginPath();
+          ctx.roundRect
+            ? ctx.roundRect(handleX, handleY, size * 0.18, size * 0.06, size * 0.02)
+            : ctx.rect(handleX, handleY, size * 0.18, size * 0.06);
+          ctx.fill();
+
+          // 锅把末端圆环
+          ctx.beginPath();
+          ctx.arc(handleX + size * 0.18, handleY + size * 0.03, size * 0.03, 0, Math.PI * 2);
+          ctx.fillStyle = '#e2e8f0';
+          ctx.fill();
+
+          // 锅里的爱心
+          ctx.shadowBlur = 0;
+          var heartSize = size * 0.10;
+          var hx = cx;
+          var hy = cy - size * 0.02;
+          ctx.fillStyle = '#f43f5e';
+          ctx.beginPath();
+          ctx.moveTo(hx, hy + heartSize * 0.6);
+          ctx.bezierCurveTo(
+            hx - heartSize * 0.8, hy - heartSize * 0.4,
+            hx - heartSize * 1.2, hy - heartSize * 0.1,
+            hx, hy + heartSize * 0.1
+          );
+          ctx.bezierCurveTo(
+            hx + heartSize * 1.2, hy - heartSize * 0.1,
+            hx + heartSize * 0.8, hy - heartSize * 0.4,
+            hx, hy + heartSize * 0.6
+          );
+          ctx.fill();
+
+          // 蒸汽气泡
+          ctx.fillStyle = 'rgba(255,255,255,0.3)';
+          var steamPositions = [
+            [cx - panR * 0.3, cy - panR * 0.6, size * 0.025],
+            [cx + panR * 0.1, cy - panR * 0.7, size * 0.02],
+            [cx + panR * 0.4, cy - panR * 0.5, size * 0.018],
+          ];
+          steamPositions.forEach(function (sp) {
+            ctx.beginPath();
+            ctx.arc(sp[0], sp[1], sp[2], 0, Math.PI * 2);
+            ctx.fill();
+          });
+
+          var dataUrl = c.toDataURL('image/png');
+
+          // --- 注入 <link> 标签 ---
+          if (size <= 180) {
+            // apple-touch-icon：只需要 iOS 需要的尺寸
+            var rel = 'apple-touch-icon';
+            var link = document.createElement('link');
+            link.rel = rel;
+            link.sizes = size + 'x' + size;
+            link.href = dataUrl;
+            document.head.appendChild(link);
+            links.push(link);
+          }
+
+          // 存储到全局供后续使用
+          if (!window.__PWA_ICONS) window.__PWA_ICONS = {};
+          window.__PWA_ICONS[size] = dataUrl;
+        });
+
+        // --- 添加通用 apple-touch-icon（无 sizes 属性，作为兜底） ---
+        var fallbackLink = document.createElement('link');
+        fallbackLink.rel = 'apple-touch-icon';
+        fallbackLink.href = window.__PWA_ICONS[180];
+        document.head.appendChild(fallbackLink);
+
+        // --- 如果是 standalone 模式（已从主屏幕启动），隐藏安装提示 ---
+        if (window.navigator.standalone) {
+          document.documentElement.setAttribute('data-installed', 'true');
+        }
+
+        console.log('[PWA] 图标已生成:', Object.keys(window.__PWA_ICONS).length, '个尺寸');
+      } catch (e) {
+        console.warn('[PWA] 图标生成失败，使用 SVG 兜底:', e);
+      }
+    })();
+  </script>
+
+  <!-- ============================================================
+       Vue 3 + 应用正文
+       ============================================================ -->
+  <div id="app" v-cloak>
+
+    <!-- 最外层容器：模拟手机屏幕，居中显示 -->
+    <div class="max-w-md mx-auto h-dvh relative overflow-hidden flex flex-col pt-safe"
+         style="background: linear-gradient(175deg, #FFF9F5 0%, #FFF0EC 50%, #FFF5F0 100%);">
+
+      <!-- ======================================================== -->
+      <!-- PWA 安装横幅（iOS Safari 专用引导）                       -->
+      <!-- 只在非 standalone 模式且是 iOS Safari 时显示             -->
+      <!-- ======================================================== -->
+      <div v-if="showInstallBanner"
+           class="flex-shrink-0 banner-slide relative z-20"
+           style="background: linear-gradient(135deg, #f43f5e, #e11d48);">
+        <div class="flex items-center justify-between px-4 py-2.5">
+          <div class="flex items-center gap-2.5 text-white">
+            <span class="text-lg">🍳</span>
+            <div>
+              <div class="text-xs font-bold">安装「情侣私厨」</div>
+              <div class="text-[10px] text-white/70">添加到主屏幕 · 随时点餐</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button @click="showInstallGuide = true"
+                    class="text-[11px] font-semibold px-3 py-1.5 rounded-full bg-white/20 text-white border border-white/20 active:scale-95 transition-transform">
+              查看教程
+            </button>
+            <button @click="dismissInstallBanner"
+                    class="text-white/50 hover:text-white/80 text-lg leading-none">
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- iOS 安装教程弹窗 -->
+      <transition name="modal">
+        <div v-if="showInstallGuide" @click.self="showInstallGuide = false"
+             class="fixed inset-0 z-50 flex items-center justify-center p-6 modal-bg"
+             style="background: rgba(0,0,0,0.3);">
+          <div class="w-full max-w-xs bg-white rounded-3xl p-6 modal-content text-center"
+               style="box-shadow: 0 20px 60px rgba(0,0,0,0.15);">
+            <span class="text-4xl block mb-3">📱</span>
+            <h3 class="text-base font-bold text-gray-800 mb-2">安装到主屏幕</h3>
+            <div class="text-left text-xs text-gray-500 space-y-2.5 mb-4">
+              <div class="flex items-start gap-2.5">
+                <span class="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-500 text-[11px] font-bold flex items-center justify-center mt-0.5">1</span>
+                <span>点击底部 <b class="text-gray-700">「分享」</b> 按钮 <span class="text-lg">⎋</span></span>
+              </div>
+              <div class="flex items-start gap-2.5">
+                <span class="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-500 text-[11px] font-bold flex items-center justify-center mt-0.5">2</span>
+                <span>向下滑动，点击 <b class="text-gray-700">「添加到主屏幕」</b> <span class="text-lg">➕</span></span>
+              </div>
+              <div class="flex items-start gap-2.5">
+                <span class="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-500 text-[11px] font-bold flex items-center justify-center mt-0.5">3</span>
+                <span>点击右上角 <b class="text-gray-700">「添加」</b>，App 图标就会出现啦 ✨</span>
+              </div>
+            </div>
+            <div class="bg-amber-50 rounded-xl p-3 text-xs text-amber-600 mb-3">
+              💡 如果是 Android，Chrome 会直接弹出「添加到主屏幕」提示
+            </div>
+            <button @click="showInstallGuide = false; dismissInstallBanner()"
+                    class="w-full py-2.5 rounded-xl text-sm font-bold text-white active:scale-95 transition-transform"
+                    style="background: linear-gradient(135deg, #f43f5e, #e11d48);">
+              知道了 👍
+            </button>
+          </div>
+        </div>
+      </transition>
+
+      <!-- ======================================================== -->
+      <!-- 页面 1：角色选择                                          -->
+      <!-- ======================================================== -->
+      <div v-if="page === 'home'" class="flex flex-col items-center justify-center flex-1 px-6 page-enter">
+
+        <!-- 装饰爱心 -->
+        <div class="absolute top-0 left-0 right-0 overflow-hidden pointer-events-none" style="height:200px">
+          <span class="absolute text-6xl opacity-[0.04] rotate-12" style="top:20px;left:10%">❤️</span>
+          <span class="absolute text-4xl opacity-[0.05] -rotate-12" style="top:50px;right:15%">❤️</span>
+          <span class="absolute text-3xl opacity-[0.03] rotate-45" style="top:80px;left:40%">❤️</span>
+          <span class="absolute text-5xl opacity-[0.04] -rotate-6" style="top:10px;right:35%">❤️</span>
+        </div>
+
+        <!-- Logo 区域 -->
+        <div class="relative z-10 flex flex-col items-center mb-7"
+             :style="{ paddingTop: showInstallBanner ? '0' : 'env(safe-area-inset-top, 0px)' }">
+          <div class="text-6xl mb-3 animate-bounce-soft">🍳</div>
+          <h1 class="text-2xl font-black tracking-wider text-gray-800">
+            <span class="text-rose-400">情侣私厨</span>
+            <span class="text-amber-400">点餐</span>
+            <span class="text-rose-400">❤️</span>
+          </h1>
+          <div class="mt-2 flex items-center gap-1 text-sm text-rose-300">
+            <span class="text-xs">💕</span>
+            <span>为爱下厨</span>
+            <span class="text-xs">💕</span>
+          </div>
+          <!-- PWA 状态指示 -->
+          <div class="mt-2 flex items-center gap-2 text-[10px]">
+            <span class="w-1.5 h-1.5 rounded-full" :class="firebaseReady ? 'bg-emerald-400' : 'bg-gray-300'"></span>
+            <span class="text-gray-300">{{ firebaseReady ? '已连接云端' : '本地模式' }}</span>
+            <span class="text-gray-200">|</span>
+            <span class="text-gray-300">{{ isStandalone ? '📱 App 模式' : '🌐 浏览器' }}</span>
+          </div>
+        </div>
+
+        <!-- 副标题 -->
+        <p class="relative z-10 text-sm text-gray-400 mb-8 tracking-wide">
+          今天你想以什么身份进入？
+        </p>
+
+        <!-- 角色卡片 -->
+        <div class="relative z-10 w-full flex flex-col gap-4 max-w-xs">
+          <!-- 客人 -->
+          <button @click="switchToGuest"
+                  class="w-full group relative overflow-hidden rounded-2xl p-5 text-left transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
+                  style="background: linear-gradient(135deg, #fdf2f4 0%, #fce7eb 50%, #fde8eb 100%); box-shadow: 0 4px 20px rgba(244,63,94,0.10);">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-2xl bg-white/70 flex items-center justify-center text-2xl shadow-sm">🍽️</div>
+              <div class="flex-1">
+                <div class="text-base font-bold text-rose-500 mb-0.5">我是客人</div>
+                <div class="text-xs text-rose-400/70 leading-relaxed">点菜 · 备注口味 · 提交订单</div>
+              </div>
+              <div class="text-rose-300 opacity-50 group-hover:opacity-80 transition-opacity text-lg">→</div>
+            </div>
+            <div class="absolute -bottom-3 -right-3 text-5xl opacity-[0.06] pointer-events-none">❤️</div>
+          </button>
+
+          <!-- 厨师 -->
+          <button @click="switchToChef"
+                  class="w-full group relative overflow-hidden rounded-2xl p-5 text-left transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
+                  style="background: linear-gradient(135deg, #fefce8 0%, #fef9c3 50%, #fef9c7 100%); box-shadow: 0 4px 20px rgba(245,158,11,0.12);">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-2xl bg-white/70 flex items-center justify-center text-2xl shadow-sm">👨‍🍳</div>
+              <div class="flex-1">
+                <div class="text-base font-bold text-amber-500 mb-0.5">我是厨师</div>
+                <div class="text-xs text-amber-400/70 leading-relaxed">查看订单 · 开始制作 · 完成订单</div>
+              </div>
+              <div class="text-amber-300 opacity-50 group-hover:opacity-80 transition-opacity text-lg">→</div>
+            </div>
+            <div class="absolute -bottom-3 -right-3 text-5xl opacity-[0.06] pointer-events-none">🍳</div>
+          </button>
+        </div>
+
+        <div class="absolute bottom-4 text-center text-[10px] text-gray-300 tracking-widest pb-safe">
+          ✦ 只为两个人做饭 ✦
+        </div>
+      </div>
+
+      <!-- ======================================================== -->
+      <!-- 页面 2：客人点餐                                          -->
+      <!-- ======================================================== -->
+      <div v-if="page === 'guest'" class="flex flex-col flex-1 page-enter">
+        <!-- 顶部导航 -->
+        <div class="flex-shrink-0 flex items-center justify-between px-4 pt-3 pb-2 pt-safe"
+             style="background: linear-gradient(180deg, #FFF9F5 0%, rgba(255,249,245,0.95) 100%);">
+          <button @click="page = 'home'" class="flex items-center gap-1 text-gray-400 hover:text-rose-400 transition-colors py-1">
+            <span class="text-lg">←</span>
+            <span class="text-xs">首页</span>
+          </button>
+          <div class="flex items-center gap-1.5">
+            <span class="text-sm">🍳</span>
+            <span class="text-sm font-bold text-gray-700">情侣私厨</span>
+            <span class="text-xs text-rose-300">点餐</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button @click="showCartPanel = !showCartPanel" class="relative py-1 px-1">
+              <span class="text-lg">🛒</span>
+              <span v-if="cartTotalQty > 0"
+                    class="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-400 text-[9px] font-bold text-white flex items-center justify-center shadow-sm">
+                {{ cartTotalQty > 99 ? '99+' : cartTotalQty }}
+              </span>
+            </button>
+            <button @click="switchToChef" class="text-xs text-amber-400 bg-amber-50 px-3 py-1 rounded-full border border-amber-200/50 hover:bg-amber-100 transition-colors">
+              👨‍🍳 厨师台
+            </button>
+          </div>
+        </div>
+
+        <!-- 主内容：左侧分类 + 右侧菜品 -->
+        <div class="flex flex-1 overflow-hidden">
+          <!-- 左侧分类导航 -->
+          <div class="flex-shrink-0 w-[88px] bg-white/40 overflow-y-auto scrollbar-thin"
+               style="border-right: 1px solid rgba(244,63,94,0.06);">
+            <div class="py-3 px-2 space-y-1">
+              <button v-for="cat in categories" :key="cat.key"
+                      @click="guestCategory = cat.key"
+                      class="cat-tab w-full text-center py-3 px-1 rounded-xl text-xs font-medium transition-all duration-200"
+                      :class="guestCategory === cat.key ? 'bg-rose-100 text-rose-500 shadow-sm' : 'text-gray-400 hover:text-gray-600 hover:bg-white/60'">
+                <div class="text-lg mb-0.5">{{ cat.emoji }}</div>
+                <div>{{ cat.label }}</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- 右侧菜品列表 -->
+          <div class="flex-1 overflow-y-auto scrollbar-thin bg-white/20">
+            <div class="py-3 px-3 space-y-3">
+              <div class="flex items-center justify-between">
+                <h3 class="text-xs font-semibold text-gray-400 tracking-wide">{{ currentCategoryLabel }}</h3>
+                <span class="text-[10px] text-gray-300">{{ filteredMenu.length }} 道菜</span>
+              </div>
+              <div v-for="item in filteredMenu" :key="item.id"
+                   @click="openItemDetail(item)"
+                   class="bg-white rounded-2xl p-3.5 card-hover cursor-pointer"
+                   style="box-shadow: 0 2px 12px rgba(0,0,0,0.04);">
+                <div class="flex items-center gap-3">
+                  <div class="flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center text-2xl"
+                       :style="{ background: item.bg || 'linear-gradient(135deg, #fdf2f4, #fce7eb)' }">
+                    {{ item.emoji }}
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <h4 class="text-sm font-bold text-gray-700 truncate">{{ item.name }}</h4>
+                      <span class="text-sm font-black text-rose-400 ml-2">¥{{ item.price }}</span>
+                    </div>
+                    <p class="text-[11px] text-gray-400 truncate mt-0.5">{{ item.desc }}</p>
+                    <div class="flex items-center justify-between mt-1.5">
+                      <span class="text-[10px] text-gray-300">已售 {{ item.sold }}</span>
+                      <button @click.stop="quickAdd(item)"
+                              class="text-xs font-medium px-3 py-1 rounded-full transition-all active:scale-90"
+                              style="background: linear-gradient(135deg, #fce7eb, #fde8eb); color: #f43f5e; box-shadow: 0 1px 4px rgba(244,63,94,0.08);">
+                        加入
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="h-24"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部悬浮购物车栏 -->
+        <div v-if="cart.length > 0"
+             class="flex-shrink-0 px-4 pb-3 pt-1 pb-safe"
+             style="background: linear-gradient(0deg, #FFF9F5 60%, transparent);">
+          <div @click="showCartPanel = !showCartPanel"
+               class="bg-white rounded-2xl p-3.5 cursor-pointer active:scale-[0.99] transition-transform btn-press"
+               style="box-shadow: 0 4px 24px rgba(244,63,94,0.15);">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-sm">🛒</div>
+                <div>
+                  <div class="text-xs text-gray-400">共 {{ cartTotalQty }} 件</div>
+                  <div class="text-lg font-black text-rose-500">¥{{ cartTotal.toFixed(1) }}</div>
+                </div>
+              </div>
+              <button @click.stop="openSubmitModal"
+                      class="px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all active:scale-95 btn-press"
+                      style="background: linear-gradient(135deg, #f43f5e, #e11d48); box-shadow: 0 4px 14px rgba(244,63,94,0.3);">
+                提交订单
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 购物车展开面板 -->
+        <transition name="panel">
+          <div v-if="showCartPanel && cart.length > 0"
+               class="absolute inset-x-0 bottom-0 z-30 panel-in pb-safe"
+               style="max-height: 55vh; background: #FFF9F5; border-radius: 20px 20px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,0.08);">
+            <div class="flex justify-center pt-3 pb-1"><div class="w-10 h-1 rounded-full bg-gray-200"></div></div>
+            <div class="flex items-center justify-between px-4 pb-2">
+              <h3 class="text-sm font-bold text-gray-700">🛒 购物车</h3>
+              <button @click="showCartPanel = false" class="text-gray-300 text-lg">✕</button>
+            </div>
+            <div class="overflow-y-auto px-4" style="max-height: calc(55vh - 80px);">
+              <div v-for="(item, idx) in cart" :key="item.id"
+                   class="flex items-center gap-3 py-3 border-b border-rose-50" :class="{'border-b-0': idx === cart.length-1}">
+                <div class="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-lg bg-rose-50">{{ item.emoji }}</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-gray-700 truncate">{{ item.name }}</div>
+                  <div class="text-xs text-rose-400 font-semibold">¥{{ (item.price * item.qty).toFixed(1) }}</div>
+                  <input v-model="item.note" placeholder="口味备注（选填）"
+                         class="mt-1 w-full text-[11px] bg-rose-50/60 rounded-lg px-2 py-1 text-gray-500 placeholder-gray-300 border border-rose-100/50 outline-none focus:border-rose-200 transition-colors" />
+                </div>
+                <div class="flex items-center gap-1.5 bg-rose-50 rounded-xl px-1 py-0.5 flex-shrink-0">
+                  <button @click="decreaseQty(item)" class="w-7 h-7 rounded-lg bg-white text-gray-400 text-sm flex items-center justify-center hover:bg-rose-100 transition-colors active:scale-90">−</button>
+                  <span class="w-5 text-center text-sm font-medium text-gray-600">{{ item.qty }}</span>
+                  <button @click="item.qty++" class="w-7 h-7 rounded-lg bg-rose-100 text-rose-400 text-sm flex items-center justify-center hover:bg-rose-200 transition-colors active:scale-90">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </transition>
+
+        <!-- 菜品详情弹窗 -->
+        <transition name="modal">
+          <div v-if="detailItem" @click.self="detailItem = null"
+               class="fixed inset-0 z-40 flex items-center justify-center p-6 modal-bg"
+               style="background: rgba(0,0,0,0.25);">
+            <div class="w-full max-w-xs bg-white rounded-3xl p-5 modal-content" style="box-shadow: 0 20px 60px rgba(0,0,0,0.15);">
+              <div class="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl mx-auto mb-3"
+                   :style="{ background: (detailItem.bg || 'linear-gradient(135deg, #fdf2f4, #fce7eb)') }">{{ detailItem.emoji }}</div>
+              <h3 class="text-center text-lg font-bold text-gray-800">{{ detailItem.name }}</h3>
+              <p class="text-center text-2xl font-black text-rose-400 mt-1">¥{{ detailItem.price }}</p>
+              <p class="text-center text-xs text-gray-400 mt-2">{{ detailItem.desc }}</p>
+              <div class="flex items-center justify-center gap-4 mt-4">
+                <button @click="detailQty = Math.max(1, detailQty - 1)" class="w-9 h-9 rounded-full bg-rose-50 text-rose-400 text-lg flex items-center justify-center active:scale-90">−</button>
+                <span class="text-xl font-bold text-gray-700 w-8 text-center">{{ detailQty }}</span>
+                <button @click="detailQty++" class="w-9 h-9 rounded-full bg-rose-100 text-rose-500 text-lg flex items-center justify-center active:scale-90">+</button>
+              </div>
+              <textarea v-model="detailNote" placeholder="口味备注… 比如：少辣、不要葱花"
+                        class="mt-3 w-full text-xs bg-rose-50/60 rounded-xl px-3 py-2 text-gray-500 placeholder-gray-300 border border-rose-100/50 outline-none focus:border-rose-200 transition-colors resize-none h-16"></textarea>
+              <div class="flex gap-2 mt-4">
+                <button @click="detailItem = null" class="flex-1 py-2.5 rounded-xl text-sm text-gray-400 bg-gray-50 active:scale-95">取消</button>
+                <button @click="addFromDetail"
+                        class="flex-1 py-2.5 rounded-xl text-sm font-bold text-white active:scale-95"
+                        style="background: linear-gradient(135deg, #f43f5e, #e11d48);">加入购物车</button>
+              </div>
+            </div>
+          </div>
+        </transition>
+
+        <!-- 提交订单确认弹窗 -->
+        <transition name="modal">
+          <div v-if="showSubmitModal" @click.self="showSubmitModal = false"
+               class="fixed inset-0 z-40 flex items-center justify-center p-6 modal-bg"
+               style="background: rgba(0,0,0,0.25);">
+            <div class="w-full max-w-xs bg-white rounded-3xl p-5 modal-content" style="box-shadow: 0 20px 60px rgba(0,0,0,0.15); max-height: 80vh; overflow-y: auto;">
+              <h3 class="text-center text-base font-bold text-gray-700 mb-1">📋 确认订单</h3>
+              <p class="text-center text-xs text-gray-400 mb-4">请检查菜品和备注信息</p>
+              <div class="space-y-2 mb-3">
+                <div v-for="item in cart" :key="item.id"
+                     class="flex items-center gap-2 bg-rose-50/50 rounded-xl p-2.5">
+                  <span class="text-lg flex-shrink-0">{{ item.emoji }}</span>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm font-medium text-gray-700 truncate">{{ item.name }}</span>
+                      <span class="text-xs font-bold text-rose-400 flex-shrink-0">¥{{ (item.price * item.qty).toFixed(1) }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-[10px] text-gray-400">
+                      <span>×{{ item.qty }}</span>
+                      <span v-if="item.note" class="truncate text-rose-300">备注：{{ item.note }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <textarea v-model="orderNote" placeholder="给厨师的话：辣度、忌口、用心做哦～ ❤️"
+                        class="w-full text-xs bg-rose-50/60 rounded-xl px-3 py-2.5 text-gray-500 placeholder-gray-300 border border-rose-100/50 outline-none focus:border-rose-200 transition-colors resize-none h-16 mb-3"></textarea>
+              <div class="flex items-center justify-between bg-rose-50 rounded-xl px-3 py-2.5 mb-3">
+                <span class="text-xs text-gray-400">共 {{ cartTotalQty }} 件 · {{ cart.length }} 种</span>
+                <span class="text-lg font-black text-rose-500">¥{{ cartTotal.toFixed(1) }}</span>
+              </div>
+              <div class="flex gap-2">
+                <button @click="showSubmitModal = false" class="flex-1 py-2.5 rounded-xl text-sm text-gray-400 bg-gray-50 active:scale-95">返回修改</button>
+                <button @click="submitOrder"
+                        class="flex-1 py-2.5 rounded-xl text-sm font-bold text-white active:scale-95"
+                        style="background: linear-gradient(135deg, #f43f5e, #e11d48); box-shadow: 0 4px 14px rgba(244,63,94,0.25);">
+                  ❤️ 确认下单
+                </button>
+              </div>
+            </div>
+          </div>
+        </transition>
+      </div>
+
+      <!-- ======================================================== -->
+      <!-- 页面 3：厨师工作台                                         -->
+      <!-- ======================================================== -->
+      <div v-if="page === 'chef'" class="flex flex-col flex-1 page-enter">
+        <!-- 顶部导航 -->
+        <div class="flex-shrink-0 flex items-center justify-between px-4 pt-3 pb-2 pt-safe"
+             style="background: linear-gradient(180deg, #FFF9F5 0%, rgba(255,249,245,0.95) 100%);">
+          <button @click="page = 'home'" class="flex items-center gap-1 text-gray-400 hover:text-amber-400 transition-colors py-1">
+            <span class="text-lg">←</span>
+            <span class="text-xs">首页</span>
+          </button>
+          <div class="flex items-center gap-1.5">
+            <span class="text-sm">👨‍🍳</span>
+            <span class="text-sm font-bold text-gray-700">厨师工作台</span>
+          </div>
+          <button @click="switchToGuest" class="text-xs text-rose-400 bg-rose-50 px-3 py-1 rounded-full border border-rose-200/50 hover:bg-rose-100 transition-colors">
+            🍽️ 客人点餐
+          </button>
+        </div>
+
+        <!-- 订单 Tab -->
+        <div class="flex-shrink-0 px-4 pb-2">
+          <div class="flex gap-1 bg-white/60 rounded-xl p-1 relative">
+            <button v-for="st in chefStatuses" :key="st.key"
+                    @click="chefTab = st.key"
+                    class="flex-1 py-2 rounded-lg text-xs font-medium transition-all duration-200 cat-tab"
+                    :class="chefTab === st.key ? 'bg-white text-amber-500 shadow-sm' : 'text-gray-400 hover:text-gray-600'">
+              {{ st.label }}
+              <span v-if="orderCountByStatus(st.key) > 0"
+                    class="ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold"
+                    :class="st.key === 'pending' ? 'bg-rose-100 text-rose-400' : 'bg-gray-100 text-gray-400'">
+                {{ orderCountByStatus(st.key) }}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 订单列表 -->
+        <div class="flex-1 overflow-y-auto scrollbar-thin px-4 pb-4">
+          <div v-if="filteredOrders.length === 0" class="flex flex-col items-center justify-center h-48 text-gray-300">
+            <span class="text-5xl mb-3 animate-float">📋</span>
+            <span class="text-sm">暂无 {{ currentChefTabLabel }} 订单</span>
+            <span v-if="chefTab === 'pending'" class="text-xs text-gray-300 mt-1">等待客人下单中～</span>
+          </div>
+          <div v-for="order in filteredOrders" :key="order.id"
+               class="bg-white rounded-2xl p-4 mb-3 order-card"
+               style="box-shadow: 0 2px 12px rgba(0,0,0,0.04);">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">📋</span>
+                <span class="text-xs text-gray-400">#{{ order.id }}</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full"
+                      :class="order.status === 'pending' ? 'bg-rose-400' : order.status === 'cooking' ? 'bg-amber-400' : order.status === 'completed' ? 'bg-emerald-400' : 'bg-gray-300'"></span>
+                <span class="text-xs" :class="order.status === 'pending' ? 'text-rose-400' : order.status === 'cooking' ? 'text-amber-400' : order.status === 'completed' ? 'text-emerald-400' : 'text-gray-300'">
+                  {{ statusLabel(order.status) }}
+                </span>
+              </div>
+            </div>
+            <div class="space-y-1 mb-2">
+              <div v-for="item in order.items" :key="item.id"
+                   class="flex items-center justify-between text-xs text-gray-400">
+                <span>{{ item.emoji }} {{ item.name }} ×{{ item.qty }}</span>
+                <span class="text-gray-500">¥{{ (item.price * item.qty).toFixed(1) }}</span>
+              </div>
+            </div>
+            <div class="text-xs text-rose-300 bg-rose-50 rounded-lg px-2 py-1 mb-2" v-if="order.note">
+              💬 备注：{{ order.note }}
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-gray-50">
+              <span class="text-[10px] text-gray-300">{{ formatTime(order.createdAt) }}</span>
+              <span class="text-sm font-semibold text-amber-400">¥{{ order.total.toFixed(1) }}</span>
+            </div>
+            <!-- 操作按钮 -->
+            <div v-if="order.status === 'pending'" class="flex gap-2 mt-3">
+              <button @click="acceptOrder(order)" class="flex-1 py-2 rounded-xl text-xs font-bold text-white active:scale-95 transition-transform btn-press"
+                      style="background: linear-gradient(135deg, #f59e0b, #d97706);">✅ 接单</button>
+              <button @click="cancelOrder(order)" class="flex-1 py-2 rounded-xl text-xs font-medium text-gray-400 bg-gray-50 active:scale-95 transition-transform btn-press">取消订单</button>
+            </div>
+            <div v-if="order.status === 'cooking'" class="flex gap-2 mt-3">
+              <button @click="completeOrder(order)" class="flex-1 py-2 rounded-xl text-xs font-bold text-white active:scale-95 transition-transform btn-press"
+                      style="background: linear-gradient(135deg, #22c55e, #16a34a);">✅ 完成制作</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Toast 提示 ===== -->
+      <transition name="toast">
+        <div v-if="toast.show"
+             class="fixed top-20 left-1/2 -translate-x-1/2 z-50 toast-in pointer-events-none"
+             style="padding-top: env(safe-area-inset-top, 0px);">
+          <div class="px-5 py-2.5 rounded-full bg-white/90 backdrop-blur-2xl border border-white/20 shadow-2xl text-sm text-gray-600 flex items-center gap-2 whitespace-nowrap">
+            <span>{{ toast.icon }}</span>
+            <span>{{ toast.msg }}</span>
+          </div>
+        </div>
+      </transition>
+
+    </div>
+  </div>
+
+  <!-- ============================================================
+       Vue 3 + Firebase SDK（CDN，无需编译）
+       ============================================================ -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+
+  <script>
+  (function() {
+    'use strict';
+
+    const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+
+    // ==============================================================
+    // Mock 菜单数据
+    // ==============================================================
+    const MENU_DATA = [
+      // 肉菜
+      { id: 1,  category: 'meat',       name: '可乐鸡翅',   price: 28, emoji: '🍗', desc: '经典可乐烧制，甜香入味',     sold: 186, bg: 'linear-gradient(135deg,#fef2f2,#fee2e2)' },
+      { id: 2,  category: 'meat',       name: '土豆炖牛腩', price: 38, emoji: '🥩', desc: '软烂牛腩配绵密土豆',         sold: 152, bg: 'linear-gradient(135deg,#fefce8,#fef9c3)' },
+      { id: 3,  category: 'meat',       name: '红烧肉',     price: 32, emoji: '🥓', desc: '肥而不腻，入口即化',         sold: 98,  bg: 'linear-gradient(135deg,#fce7f3,#fbcfe8)' },
+      { id: 4,  category: 'meat',       name: '糖醋排骨',   price: 35, emoji: '🍖', desc: '酸甜可口，外酥里嫩',         sold: 213, bg: 'linear-gradient(135deg,#fff1f2,#ffe4e6)' },
+      { id: 5,  category: 'meat',       name: '清蒸鲈鱼',   price: 42, emoji: '🐟', desc: '鲜嫩滑口，葱香四溢',         sold: 74,  bg: 'linear-gradient(135deg,#ecfdf5,#d1fae5)' },
+      // 家常菜
+      { id: 6,  category: 'home',       name: '番茄炒蛋',   price: 16, emoji: '🍅', desc: '经典家常，酸甜开胃',         sold: 312, bg: 'linear-gradient(135deg,#fef2f2,#fee2e2)' },
+      { id: 7,  category: 'home',       name: '蒜蓉西兰花', price: 18, emoji: '🥬', desc: '清爽健康，蒜香浓郁',         sold: 89,  bg: 'linear-gradient(135deg,#ecfdf5,#a7f3d0)' },
+      { id: 8,  category: 'home',       name: '麻婆豆腐',   price: 22, emoji: '🫘', desc: '麻辣鲜香，下饭神器',         sold: 178, bg: 'linear-gradient(135deg,#fef2f2,#fecaca)' },
+      { id: 9,  category: 'home',       name: '凉拌黄瓜',   price: 12, emoji: '🥒', desc: '爽脆可口，蒜泥调味',         sold: 234, bg: 'linear-gradient(135deg,#ecfdf5,#d1fae5)' },
+      { id: 10, category: 'home',       name: '鱼香茄子',   price: 20, emoji: '🍆', desc: '软糯入味，酸甜微辣',         sold: 145, bg: 'linear-gradient(135deg,#fce7f3,#fbcfe8)' },
+      // 早餐
+      { id: 11, category: 'breakfast',  name: '鲜肉水饺',   price: 20, emoji: '🥟', desc: '手工现包，皮薄馅大',         sold: 267, bg: 'linear-gradient(135deg,#fefce8,#fef9c3)' },
+      { id: 12, category: 'breakfast',  name: '葱油饼',     price: 8,  emoji: '🥞', desc: '外酥里软，葱香四溢',         sold: 412, bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)' },
+      { id: 13, category: 'breakfast',  name: '茶叶蛋',     price: 4,  emoji: '🥚', desc: '卤香入味，蛋白弹嫩',         sold: 523, bg: 'linear-gradient(135deg,#fef3c7,#fde68a)' },
+      { id: 14, category: 'breakfast',  name: '皮蛋瘦肉粥', price: 12, emoji: '🥣', desc: '浓稠绵密，暖胃暖心',         sold: 196, bg: 'linear-gradient(135deg,#fefce8,#fef9c3)' },
+      { id: 15, category: 'breakfast',  name: '鸡蛋灌饼',   price: 10, emoji: '🧇', desc: '外皮酥脆，蛋香十足',         sold: 334, bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)' },
+    ];
+
+    // ==============================================================
+    // Vue App
+    // ==============================================================
+    createApp({
+      setup() {
+        // ---- 页面状态 ----
+        const page = ref('home');
+        const guestCategory = ref('meat');
+        const chefTab = ref('pending');
+
+        // ---- 购物车 ----
+        const cart = ref([]);
+        const showCartPanel = ref(false);
+        const showSubmitModal = ref(false);
+        const orderNote = ref('');
+
+        // ---- 菜品详情弹窗 ----
+        const detailItem = ref(null);
+        const detailQty = ref(1);
+        const detailNote = ref('');
+
+        // ---- 订单 ----
+        const orders = ref([]);
+
+        // ---- Toast ----
+        const toast = ref({ show: false, msg: '', icon: '✨' });
+
+        // ---- PWA 安装横幅 ----
+        const showInstallBanner = ref(false);
+        const showInstallGuide = ref(false);
+        const isStandalone = ref(false);
+
+        // ---- Firebase ----
+        const firebaseReady = ref(false);
+
+        // ---- 分类定义 ----
+        const categories = [
+          { key: 'meat',      label: '肉菜',   emoji: '🥩' },
+          { key: 'home',      label: '家常菜', emoji: '🥬' },
+          { key: 'breakfast', label: '早餐',   emoji: '🥟' },
+        ];
+
+        const chefStatuses = [
+          { key: 'pending',   label: '待接单' },
+          { key: 'cooking',   label: '制作中' },
+          { key: 'completed', label: '已完成' },
+        ];
+
+        // ---- 计算属性 ----
+        const filteredMenu = computed(() =>
+          MENU_DATA.filter(i => i.category === guestCategory.value)
+        );
+
+        const currentCategoryLabel = computed(() => {
+          const c = categories.find(c => c.key === guestCategory.value);
+          return c ? c.emoji + ' ' + c.label : '';
+        });
+
+        const cartTotal = computed(() =>
+          cart.value.reduce((s, i) => s + i.price * i.qty, 0)
+        );
+        const cartTotalQty = computed(() =>
+          cart.value.reduce((s, i) => s + i.qty, 0)
+        );
+
+        const filteredOrders = computed(() => {
+          const statusMap = { pending: 'pending', cooking: 'cooking', completed: 'completed' };
+          return orders.value.filter(o => o.status === statusMap[chefTab.value]);
+        });
+
+        const currentChefTabLabel = computed(() => {
+          const s = chefStatuses.find(s => s.key === chefTab.value);
+          return s ? s.label : '';
+        });
+
+        // ---- 订单计数 ----
+        function orderCountByStatus(status) {
+          return orders.value.filter(o => o.status === status).length;
+        }
+
+        // ---- 状态标签 ----
+        function statusLabel(s) {
+          return { pending: '待接单', cooking: '制作中', completed: '已完成', cancelled: '已取消' }[s] || s;
+        }
+
+        // ---- 时间格式化 ----
+        function formatTime(ts) {
+          if (!ts) return '';
+          const d = new Date(ts);
+          return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        }
+
+        // ============================================================
+        // 页面切换
+        // ============================================================
+        function goHome() { page.value = 'home'; }
+
+        function switchToGuest() {
+          page.value = 'guest';
+          showCartPanel.value = false;
+        }
+
+        function switchToChef() {
+          page.value = 'chef';
+          showCartPanel.value = false;
+        }
+
+        // ============================================================
+        // 购物车操作
+        // ============================================================
+        function quickAdd(item) {
+          const exist = cart.value.find(i => i.id === item.id);
+          if (exist) { exist.qty++; }
+          else { cart.value.push({ ...item, qty: 1, note: '' }); }
+          saveCart();
+          showToast(`${item.emoji} 已加入`, '❤️');
+        }
+
+        function openItemDetail(item) {
+          detailItem.value = item;
+          detailQty.value = 1;
+          detailNote.value = '';
+        }
+
+        function addFromDetail() {
+          if (!detailItem.value) return;
+          const item = detailItem.value;
+          const exist = cart.value.find(i => i.id === item.id);
+          if (exist) {
+            exist.qty += detailQty.value;
+            if (detailNote.value) exist.note = detailNote.value;
+          } else {
+            cart.value.push({ ...item, qty: detailQty.value, note: detailNote.value });
+          }
+          detailItem.value = null;
+          saveCart();
+          showToast(`${item.emoji} ×${detailQty} 已加入`, '❤️');
+        }
+
+        function decreaseQty(item) {
+          if (item.qty <= 1) {
+            cart.value = cart.value.filter(i => i.id !== item.id);
+            if (cart.value.length === 0) showCartPanel.value = false;
+          } else {
+            item.qty--;
+          }
+          saveCart();
+        }
+
+        function saveCart() {
+          try { localStorage.setItem('couple-cart', JSON.stringify(cart.value)); } catch (_) {}
+        }
+
+        function loadCart() {
+          try {
+            const saved = localStorage.getItem('couple-cart');
+            if (saved) cart.value = JSON.parse(saved);
+          } catch (_) {}
+        }
+
+        // ============================================================
+        // 提交订单
+        // ============================================================
+        function openSubmitModal() {
+          if (cart.value.length === 0) return;
+          showSubmitModal.value = true;
+        }
+
+        function submitOrder() {
+          if (cart.value.length === 0) return;
+          const order = {
+            id: Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 5).toUpperCase(),
+            items: cart.value.map(i => ({ ...i })),
+            total: cartTotal.value,
+            note: orderNote.value || '',
+            status: 'pending',
+            createdAt: Date.now(),
+            acceptedAt: null,
+            completedAt: null,
+          };
+          orders.value.push(order);
+          cart.value = [];
+          orderNote.value = '';
+          showSubmitModal.value = false;
+          showCartPanel.value = false;
+          saveOrders();
+          saveCart();
+          // 通过 BroadcastChannel 通知厨师
+          broadcastOrder(order);
+          // 同步到 Firebase
+          if (firebaseReady.value) pushOrderToFirebase(order);
+          showToast('🎉 下单成功！', '💕');
+        }
+
+        // ============================================================
+        // 厨师操作
+        // ============================================================
+        function acceptOrder(order) {
+          order.status = 'cooking';
+          order.acceptedAt = Date.now();
+          saveOrders();
+          if (firebaseReady.value) pushOrderToFirebase(order);
+          broadcastOrder(order);
+          showToast('✅ 已接单，开始制作', '👨‍🍳');
+        }
+
+        function completeOrder(order) {
+          order.status = 'completed';
+          order.completedAt = Date.now();
+          saveOrders();
+          if (firebaseReady.value) pushOrderToFirebase(order);
+          broadcastOrder(order);
+          showToast('✅ 订单已完成！', '🎉');
+        }
+
+        function cancelOrder(order) {
+          order.status = 'cancelled';
+          saveOrders();
+          if (firebaseReady.value) pushOrderToFirebase(order);
+          broadcastOrder(order);
+          showToast('已取消订单', '🗑️');
+        }
+
+        // ============================================================
+        // localStorage 持久化
+        // ============================================================
+        function saveOrders() {
+          try { localStorage.setItem('couple-orders', JSON.stringify(orders.value)); } catch (_) {}
+        }
+
+        function loadOrders() {
+          try {
+            const saved = localStorage.getItem('couple-orders');
+            if (saved) orders.value = JSON.parse(saved);
+          } catch (_) {}
+        }
+
+        // ============================================================
+        // BroadcastChannel（同设备跨标签页实时通信）
+        // ============================================================
+        let bc = null;
+        function setupBroadcastChannel() {
+          try {
+            bc = new BroadcastChannel('couple-kitchen');
+            bc.onmessage = (event) => {
+              const msg = event.data;
+              if (!msg || !msg.type) return;
+              // 收到新订单或订单状态变更 → 自动刷新订单列表
+              if (msg.type === 'order-update' && msg.order) {
+                const idx = orders.value.findIndex(o => o.id === msg.order.id);
+                if (idx >= 0) {
+                  orders.value[idx] = msg.order;
+                } else {
+                  orders.value.push(msg.order);
+                }
+                saveOrders();
+                // 如果在厨师页面，显示提示
+                if (page.value === 'chef' && msg.order.status === 'pending') {
+                  showToast('📋 新订单来了！', '🔔');
+                }
+                if (page.value === 'guest' && msg.order.status === 'cooking') {
+                  showToast('👨‍🍳 厨师已接单，开始制作～', '🔥');
+                }
+                if (page.value === 'guest' && msg.order.status === 'completed') {
+                  showToast('🎉 订单已完成，可以开吃啦！', '🍽️');
+                }
+              }
+            };
+          } catch (e) {
+            console.warn('BroadcastChannel 不可用:', e);
+          }
+        }
+
+        function broadcastOrder(order) {
+          if (bc) {
+            try {
+              bc.postMessage({ type: 'order-update', order: JSON.parse(JSON.stringify(order)) });
+            } catch (_) {}
+          }
+        }
+
+        // ============================================================
+        // Firebase 实时数据库（跨设备同步）
+        // ============================================================
+        function initFirebase() {
+          try {
+            let config = null;
+            const configStr = localStorage.getItem('couple-firebase-config');
+            if (configStr) {
+              try { config = JSON.parse(configStr); } catch (_) {}
+            }
+            if (!config) {
+              // 从 URL 参数读取 ?firebase=base64
+              const params = new URLSearchParams(window.location.search);
+              const fbParam = params.get('firebase');
+              if (fbParam) {
+                try {
+                  const decoded = JSON.parse(atob(fbParam));
+                  localStorage.setItem('couple-firebase-config', JSON.stringify(decoded));
+                  config = decoded;
+                } catch (_) {}
+              }
+            }
+            if (!config || !config.databaseURL) return;
+
+            firebase.initializeApp(config);
+            const db = firebase.database();
+
+            // 监听 orders 节点的变化
+            const ordersRef = db.ref('orders');
+            ordersRef.on('value', (snapshot) => {
+              const data = snapshot.val();
+              if (data) {
+                const incoming = Object.values(data);
+                // 合并到本地 orders
+                incoming.forEach(incomingOrder => {
+                  const idx = orders.value.findIndex(o => o.id === incomingOrder.id);
+                  if (idx >= 0) {
+                    orders.value[idx] = incomingOrder;
+                  } else {
+                    orders.value.push(incomingOrder);
+                  }
+                });
+                saveOrders();
+              }
+            });
+
+            firebaseReady.value = true;
+            console.log('[Firebase] 已连接:', config.databaseURL);
+          } catch (e) {
+            console.warn('[Firebase] 初始化失败:', e);
+          }
+        }
+
+        function pushOrderToFirebase(order) {
+          try {
+            const db = firebase.database();
+            db.ref('orders/' + order.id).set(order);
+          } catch (e) {
+            console.warn('[Firebase] 写入失败:', e);
+          }
+        }
+
+        // ============================================================
+        // Service Worker 注册
+        // ============================================================
+        function registerSW() {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then((reg) => {
+              console.log('[SW] 注册成功，作用域:', reg.scope);
+            }).catch((err) => {
+              console.warn('[SW] 注册失败:', err);
+            });
+          }
+        }
+
+        // ============================================================
+        // PWA 安装引导
+        // ============================================================
+        function checkInstallBanner() {
+          // 判断是否已从主屏幕启动
+          isStandalone.value = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+
+          // 只在非 standalone 模式、iOS Safari 下显示安装横幅
+          if (isStandalone.value) return;
+
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || isIOS;
+
+          // 检查是否已关闭过
+          const dismissed = localStorage.getItem('couple-install-dismissed');
+          if (dismissed) return;
+
+          // iOS Safari → 显示安装横幅
+          if (isIOS && isSafari) {
+            showInstallBanner.value = true;
+          }
+          // Android Chrome → 不需要自定义横幅，浏览器自己会弹
+        }
+
+        function dismissInstallBanner() {
+          showInstallBanner.value = false;
+          try { localStorage.setItem('couple-install-dismissed', 'true'); } catch (_) {}
+        }
+
+        // ============================================================
+        // Toast
+        // ============================================================
+        let toastTimer = null;
+        function showToast(msg, icon = '✨') {
+          if (toastTimer) clearTimeout(toastTimer);
+          toast.value = { show: true, msg, icon };
+          toastTimer = setTimeout(() => { toast.value.show = false; }, 2000);
+        }
+
+        // ============================================================
+        // 生命周期
+        // ============================================================
+        onMounted(() => {
+          loadOrders();
+          loadCart();
+          setupBroadcastChannel();
+          initFirebase();
+          registerSW();
+          checkInstallBanner();
+
+          // 监听 URL 参数 role 自动切换（用于 PWA 不同入口）
+          const params = new URLSearchParams(window.location.search);
+          const role = params.get('role');
+          if (role === 'guest') switchToGuest();
+          else if (role === 'chef') switchToChef();
+        });
+
+        // 持久化 orders 的自动监听
+        watch(orders, () => { saveOrders(); }, { deep: true });
+
+        return {
+          // 状态
+          page, guestCategory, chefTab,
+          cart, showCartPanel, showSubmitModal, orderNote,
+          detailItem, detailQty, detailNote,
+          orders, toast,
+          showInstallBanner, showInstallGuide, isStandalone,
+          firebaseReady,
+          // 常量
+          categories, chefStatuses,
+          // 计算
+          filteredMenu, currentCategoryLabel,
+          cartTotal, cartTotalQty,
+          filteredOrders, currentChefTabLabel,
+          // 方法
+          goHome, switchToGuest, switchToChef,
+          quickAdd, openItemDetail, addFromDetail, decreaseQty,
+          openSubmitModal, submitOrder,
+          acceptOrder, completeOrder, cancelOrder,
+          orderCountByStatus, statusLabel, formatTime,
+          dismissInstallBanner,
+          showToast,
+        };
+      }
+    }).mount('#app');
+
+  })();
+  </script>
+
+</body>
+</html>
