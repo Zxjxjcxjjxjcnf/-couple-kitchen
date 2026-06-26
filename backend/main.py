@@ -70,3 +70,11 @@ async def seed_menu_data():
             print(f"[Seed] 已写入 {len(SEED_MENU)} 道预置菜品")
         else:
             print(f"[Seed] 菜单已存在 ({count} 道菜)，跳过初始化")
+
+
+# ---- 直接运行时启动 Uvicorn（读取 PORT 环境变量） ----
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    print(f"[启动] 端口: {port}")
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=port, proxy_headers=True, forwarded_allow_ips="*")

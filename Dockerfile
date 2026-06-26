@@ -14,5 +14,5 @@ COPY . .
 
 RUN mkdir -p backend/uploads
 
-# 用 python 启动，从环境变量读取 PORT
-CMD python -c "import os, uvicorn; port = int(os.getenv('PORT', '8000')); uvicorn.run('backend.main:app', host='0.0.0.0', port=port, proxy_headers=True, forwarded_allow_ips='*')"
+# main.py 内部读取 $PORT 环境变量，不需要 shell 展开
+CMD python -m backend.main
