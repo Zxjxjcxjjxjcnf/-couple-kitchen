@@ -267,10 +267,85 @@
           document.documentElement.setAttribute('data-installed', 'true');
         }
 
+        // --- 用生成的 PNG 替换 manifest 中的 SVG 图标 ---
+        updateManifestWithPNG(window.__PWA_ICONS);
+
         console.log('[PWA] 图标已生成:', Object.keys(window.__PWA_ICONS).length, '个尺寸');
       } catch (e) {
         console.warn('[PWA] 图标生成失败，使用 SVG 兜底:', e);
       }
+    })();
+
+    // ---- 用 Canvas PNG 覆盖 manifest 图标（Android Chrome 需要真实 PNG） ----
+    function updateManifestWithPNG(icons) {
+      try {
+        var manifestLink = document.querySelector('link[rel="manifest"]');
+        if (!manifestLink) return;
+
+        var pngIcons = [];
+        var neededSizes = [192, 512];
+        neededSizes.forEach(function (size) {
+          if (icons[size]) {
+            pngIcons.push({
+              src: icons[size],
+              sizes: size + 'x' + size,
+              type: 'image/png',
+              purpose: 'any maskable',
+            });
+          }
+        });
+
+        if (pngIcons.length === 0) return;
+
+        // 获取当前 manifest 内容作为基础
+        var baseManifest = {
+          name: '情侣私厨点餐',
+          short_name: '情侣私厨',
+          description: '为爱下厨 — 情侣专属点餐助手',
+          start_url: 'index.html',
+          display: 'standalone',
+          orientation: 'portrait',
+          background_color: '#FFF9F5',
+          theme_color: '#f43f5e',
+          scope: './',
+          id: 'couple-kitchen-1',
+          lang: 'zh-CN',
+        };
+        baseManifest.icons = pngIcons;
+
+        var blob = new Blob([JSON.stringify(baseManifest)], { type: 'application/json' });
+        var blobUrl = URL.createObjectURL(blob);
+        manifestLink.href = blobUrl;
+        console.log('[PWA] manifest 已更新为 PNG 图标:', blobUrl);
+      } catch (e) {
+        console.warn('[PWA] manifest 更新失败:', e);
+      }
+    }
+
+    // ---- 尽早注册 Service Worker + 捕获安装事件 ----
+    (function initPWA() {
+      // 注册 Service Worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(function (err) {
+          console.warn('[SW] 注册失败:', err);
+        });
+      }
+
+      // 捕获 beforeinstallprompt（Android Chrome 安装事件）
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        window.__deferredPrompt = e;
+        document.documentElement.setAttribute('data-can-install', 'true');
+        console.log('[PWA] 已捕获安装事件，等待用户触发');
+      });
+
+      // 监听安装完成
+      window.addEventListener('appinstalled', function () {
+        window.__deferredPrompt = null;
+        document.documentElement.removeAttribute('data-can-install');
+        document.documentElement.setAttribute('data-installed', 'true');
+        console.log('[PWA] 安装完成');
+      });
     })();
   </script>
 
@@ -285,21 +360,27 @@
 
       <!-- ======================================================== -->
       <!-- PWA 安装横幅（iOS Safari 专用引导）                       -->
-      <!-- 只在非 standalone 模式且是 iOS Safari 时显示             -->
+      <!-- PWA 安装横幅（iOS + Android 通用引导）                 -->
       <!-- ======================================================== -->
       <div v-if="showInstallBanner"
            class="flex-shrink-0 banner-slide relative z-20"
            style="background: linear-gradient(135deg, #f43f5e, #e11d48);">
         <div class="flex items-center justify-between px-4 py-2.5">
           <div class="flex items-center gap-2.5 text-white">
-            <span class="text-lg">🍳</span>
+            <span class="text-lg">📱</span>
             <div>
               <div class="text-xs font-bold">安装「情侣私厨」</div>
-              <div class="text-[10px] text-white/70">添加到主屏幕 · 随时点餐</div>
+              <div class="text-[10px] text-white/70">{{ canInstall ? '点击安装 · 桌面快捷访问' : '添加到主屏幕 · 随时点餐' }}</div>
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <button @click="showInstallGuide = true"
+            <!-- Android: 直接安装 -->
+            <button v-if="canInstall" @click="installApp"
+                    class="text-[11px] font-semibold px-4 py-1.5 rounded-full bg-white text-rose-500 active:scale-95 transition-transform shadow-sm">
+              立即安装
+            </button>
+            <!-- iOS: 查看教程 -->
+            <button v-else @click="showInstallGuide = true"
                     class="text-[11px] font-semibold px-3 py-1.5 rounded-full bg-white/20 text-white border border-white/20 active:scale-95 transition-transform">
               查看教程
             </button>
@@ -334,8 +415,9 @@
                 <span>点击右上角 <b class="text-gray-700">「添加」</b>，App 图标就会出现啦 ✨</span>
               </div>
             </div>
-            <div class="bg-amber-50 rounded-xl p-3 text-xs text-amber-600 mb-3">
-              💡 如果是 Android，Chrome 会直接弹出「添加到主屏幕」提示
+            <div class="bg-amber-50 rounded-xl p-3 text-xs text-amber-600 mb-3 leading-relaxed">
+              <div class="font-semibold mb-1">💡 Android 用户</div>
+              Chrome 底部会弹出安装提示，点击「安装」即可。如果没有弹出，在 Chrome 菜单 ⋮ 中选择「添加到主屏幕」。
             </div>
             <button @click="showInstallGuide = false; dismissInstallBanner()"
                     class="w-full py-2.5 rounded-xl text-sm font-bold text-white active:scale-95 transition-transform"
@@ -805,6 +887,7 @@
         const showInstallBanner = ref(false);
         const showInstallGuide = ref(false);
         const isStandalone = ref(false);
+        const canInstall = ref(false);  // Android Chrome 安装可用
 
         // ---- Firebase ----
         const firebaseReady = ref(false);
@@ -1136,22 +1219,54 @@
         function checkInstallBanner() {
           // 判断是否已从主屏幕启动
           isStandalone.value = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-
-          // 只在非 standalone 模式、iOS Safari 下显示安装横幅
           if (isStandalone.value) return;
 
+          // 检查 Android Chrome 是否已触发安装事件
+          if (window.__deferredPrompt) {
+            canInstall.value = true;
+            // Android 也需要显示安装横幅
+          }
+
+          // 检测是否 iOS Safari
           const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
           const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || isIOS;
 
-          // 检查是否已关闭过
+          // 检查是否已关闭过横幅
           const dismissed = localStorage.getItem('couple-install-dismissed');
           if (dismissed) return;
 
-          // iOS Safari → 显示安装横幅
+          // iOS Safari
           if (isIOS && isSafari) {
             showInstallBanner.value = true;
+            return;
           }
-          // Android Chrome → 不需要自定义横幅，浏览器自己会弹
+
+          // Android Chrome（有安装事件但没有关闭过横幅）
+          if (canInstall.value) {
+            showInstallBanner.value = true;
+          }
+        }
+
+        // 监听 data-can-install 属性变化（Chrome 安装事件随时可能触发）
+        var installObserver = new MutationObserver(function () {
+          if (document.documentElement.hasAttribute('data-can-install') && !isStandalone.value) {
+            canInstall.value = true;
+            var dismissed = localStorage.getItem('couple-install-dismissed');
+            if (!dismissed) showInstallBanner.value = true;
+          }
+        });
+        installObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-can-install'] });
+
+        function installApp() {
+          var prompt = window.__deferredPrompt;
+          if (!prompt) return;
+          prompt.prompt();
+          prompt.userChoice.then(function (result) {
+            console.log('[PWA] 用户安装选择:', result.outcome);
+            window.__deferredPrompt = null;
+            canInstall.value = false;
+            showInstallBanner.value = false;
+          });
         }
 
         function dismissInstallBanner() {
@@ -1196,7 +1311,7 @@
           cart, showCartPanel, showSubmitModal, orderNote,
           detailItem, detailQty, detailNote,
           orders, toast,
-          showInstallBanner, showInstallGuide, isStandalone,
+          showInstallBanner, showInstallGuide, isStandalone, canInstall,
           firebaseReady,
           // 常量
           categories, chefStatuses,
@@ -1210,7 +1325,7 @@
           openSubmitModal, submitOrder,
           acceptOrder, completeOrder, cancelOrder,
           orderCountByStatus, statusLabel, formatTime,
-          dismissInstallBanner,
+          dismissInstallBanner, installApp,
           showToast,
         };
       }
