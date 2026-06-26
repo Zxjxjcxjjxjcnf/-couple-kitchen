@@ -5,7 +5,15 @@ import os
 
 from .config import DATABASE_URL
 
-engine = create_async_engine(DATABASE_URL, echo=False, pool_size=10, max_overflow=20)
+# 创建异步引擎
+# 连接池调小一点，Railway 免费版连接数有限
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=False,
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,  # 连接前检查是否有效
+)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
@@ -14,10 +22,9 @@ class Base(DeclarativeBase):
 
 
 async def init_db():
-    """初始化数据库：建库（本地）→ 建表 → 迁移旧表"""
+    """初始化数据库：建表 + 迁移"""
     import aiomysql
 
-    # 判断是否在 Railway（有 DATABASE_URL 环境变量说明是部署环境）
     is_railway = bool(os.getenv("DATABASE_URL"))
 
     if not is_railway:
@@ -37,24 +44,29 @@ async def init_db():
             )
             await cur.close()
             conn.close()
-            print("[DB] 数据库已就绪")
+            print("[DB] 本地数据库已就绪")
         except Exception as e:
-            print(f"[DB] 建库跳过（可能已在 Railway）: {e}")
+            print(f"[DB] 本地建库跳过: {e}")
 
-    # 创建所有表（如果不存在则创建，已存在则跳过）
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print("[DB] 表结构已同步")
+    # 创建所有表
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("[DB] 表结构已同步")
+    except Exception as e:
+        print(f"[DB] 建表失败: {e}")
+        print("[DB] 请检查 DATABASE_URL 是否正确，以及数据库是否可访问")
+        raise  # 让应用启动失败，Railway 会显示错误日志
 
-    # 迁移：给已存在的表添加 image_url 列（如果尚不存在）
-    async with engine.begin() as conn:
-        try:
+    # 迁移：添加 image_url 列（如果尚不存在）
+    try:
+        async with engine.begin() as conn:
             await conn.execute(
                 text("ALTER TABLE menu_items ADD COLUMN image_url VARCHAR(500) DEFAULT ''")
             )
-            print("[DB] 已添加 image_url 列")
-        except Exception:
-            pass  # 列已存在
+        print("[DB] 已添加 image_url 列")
+    except Exception:
+        pass  # 列已存在，忽略
 
     print("[DB] 数据库初始化完成")
 

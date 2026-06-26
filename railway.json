@@ -1,6 +1,12 @@
 {
-  "buildCommand": null,
-  "outputDirectory": ".",
-  "startCommand": "uvicorn backend.main:app --host 0.0.0.0 --port $PORT",
-  "healthCheckPath": "/api/menu"
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "uvicorn backend.main:app --host 0.0.0.0 --port $PORT",
+    "healthcheckPath": "/api/menu",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
+  }
 }
