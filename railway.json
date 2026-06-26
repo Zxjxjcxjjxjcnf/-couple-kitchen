@@ -1,6 +1,6 @@
 {
   "buildCommand": null,
   "outputDirectory": ".",
-  "startCommand": "node server.js",
-  "healthCheckPath": "/health"
+  "startCommand": "uvicorn backend.main:app --host 0.0.0.0 --port $PORT",
+  "healthCheckPath": "/api/menu"
 }
