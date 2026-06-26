@@ -1,0 +1,23 @@
+{
+  "name": "couple-kitchen",
+  "version": "1.0.0",
+  "description": "❤️ 情侣私厨 — 情侣专属点餐 App + PWA",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "sync": "node -e \"require('fs').cpSync('index.html','www/index.html'); require('fs').cpSync('manifest.json','www/manifest.json'); require('fs').cpSync('sw.js','www/sw.js')\" && npx cap sync",
+    "android:open": "npx cap open android",
+    "android:build": "npm run sync && cd android && gradlew assembleRelease",
+    "android:build:apk": "npm run sync && cd android && gradlew assembleDebug"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "compression": "^1.7.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/android": "^6.0.0"
+  }
+}

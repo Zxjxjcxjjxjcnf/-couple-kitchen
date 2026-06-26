@@ -1,0 +1,6 @@
+{
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "startCommand": "node server.js",
+  "healthCheckPath": "/health"
+}

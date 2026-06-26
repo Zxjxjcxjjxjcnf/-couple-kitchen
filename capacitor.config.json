@@ -1,0 +1,15 @@
+{
+  "appId": "com.couplekitchen.app",
+  "appName": "情侣私厨",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "clearText": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1000,
+      "backgroundColor": "#FFF9F5"
+    }
+  }
+}
