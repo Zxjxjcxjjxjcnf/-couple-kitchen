@@ -1,0 +1,11 @@
+# 情侣私厨 — FastAPI 后端
+# pip install -r requirements.txt
+# uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+
+fastapi==0.115.0
+uvicorn[standard]==0.31.0
+sqlalchemy[asyncio]==2.0.36
+aiomysql==0.2.0
+pydantic==2.10.0
+python-dotenv==1.0.1
+websockets==13.0

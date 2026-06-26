@@ -857,6 +857,113 @@
     ];
 
     // ==============================================================
+    // FastAPI 后端地址
+    // ==============================================================
+    const API_BASE = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
+      ? 'http://localhost:8000'
+      : window.location.origin;  // 生产环境同源
+
+    // ==============================================================
+    // API 请求工具
+    // ==============================================================
+    async function apiGet(path) {
+      const res = await fetch(API_BASE + path);
+      if (!res.ok) throw new Error(`GET ${path} 失败: ${res.status}`);
+      return res.json();
+    }
+    async function apiPost(path, data) {
+      const res = await fetch(API_BASE + path, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(`POST ${path} 失败: ${res.status}`);
+      return res.json();
+    }
+    async function apiPut(path, data) {
+      const res = await fetch(API_BASE + path, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(`PUT ${path} 失败: ${res.status}`);
+      return res.json();
+    }
+
+    // ==============================================================
+    // WebSocket 实时连接
+    // ==============================================================
+    let ws = null;
+    let wsReconnectTimer = null;
+    let wsRole = 'guest';
+
+    function connectWebSocket(role) {
+      wsRole = role;
+      if (ws) { try { ws.close(); } catch (_) {} }
+
+      const wsUrl = API_BASE.replace(/^http/, 'ws') + '/api/orders/ws';
+      try {
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          console.log('[WS] 已连接, 角色:', role);
+          ws.send(JSON.stringify({ type: 'subscribe', role: role }));
+          if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            handleWSMessage(msg);
+          } catch (_) {}
+        };
+
+        ws.onclose = () => {
+          console.log('[WS] 断开，5秒后重连');
+          wsReconnectTimer = setTimeout(() => connectWebSocket(wsRole), 5000);
+        };
+
+        ws.onerror = () => { console.warn('[WS] 连接错误'); };
+      } catch (e) {
+        console.warn('[WS] 创建失败:', e);
+        wsReconnectTimer = setTimeout(() => connectWebSocket(wsRole), 5000);
+      }
+    }
+
+    function handleWSMessage(msg) {
+      if (msg.type === 'order_new' || msg.type === 'order_update') {
+        const order = msg.data;
+        if (!order) return;
+        const idx = ordersCache.findIndex(o => o.id === order.id);
+        if (idx >= 0) {
+          ordersCache[idx] = order;
+        } else {
+          ordersCache.push(order);
+        }
+        // 同步到 Vue 响应式状态
+        if (window.__vueOrders) {
+          const vo = window.__vueOrders;
+          const vi = vo.value.findIndex(o => o.id === order.id);
+          if (vi >= 0) { vo.value[vi] = order; }
+          else { vo.value.push(order); }
+        }
+        // 通知提示
+        if (msg.type === 'order_new' && wsRole === 'chef') {
+          if (window.__vueShowToast) window.__vueShowToast('📋 新订单来了！', '🔔');
+        }
+        if (msg.type === 'order_update' && wsRole === 'guest') {
+          if (order.status === 'cooking' && window.__vueShowToast) {
+            window.__vueShowToast('👨‍🍳 厨师已接单！', '🔥');
+          }
+          if (order.status === 'completed' && window.__vueShowToast) {
+            window.__vueShowToast('🎉 订单已完成！', '🍽️');
+          }
+        }
+      }
+    }
+
+    // 共享订单缓存（Vue 和 WebSocket 之间）
+    let ordersCache = [];
+
+    // ==============================================================
     // Vue App
     // ==============================================================
     createApp({
@@ -905,9 +1012,23 @@
           { key: 'completed', label: '已完成' },
         ];
 
+        // ---- 菜单数据（优先从 API 加载，fallback 到本地） ----
+        const menuItems = ref([...MENU_DATA]);
+
+        async function loadMenu() {
+          try {
+            const data = await apiGet('/api/menu');
+            if (data && data.length > 0) {
+              menuItems.value = data;
+            }
+          } catch (e) {
+            console.warn('从 API 加载菜单失败，使用本地数据');
+          }
+        }
+
         // ---- 计算属性 ----
         const filteredMenu = computed(() =>
-          MENU_DATA.filter(i => i.category === guestCategory.value)
+          menuItems.value.filter(i => i.category === guestCategory.value)
         );
 
         const currentCategoryLabel = computed(() => {
@@ -957,11 +1078,19 @@
         function switchToGuest() {
           page.value = 'guest';
           showCartPanel.value = false;
+          // 切换 WebSocket 角色
+          connectWebSocket('guest');
+          // 刷新订单
+          loadOrders();
         }
 
         function switchToChef() {
           page.value = 'chef';
           showCartPanel.value = false;
+          // 切换 WebSocket 角色
+          connectWebSocket('chef');
+          // 刷新订单
+          loadOrders();
         }
 
         // ============================================================
@@ -1025,121 +1154,111 @@
           showSubmitModal.value = true;
         }
 
-        function submitOrder() {
+        async function submitOrder() {
           if (cart.value.length === 0) return;
-          const order = {
-            id: Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 5).toUpperCase(),
-            items: cart.value.map(i => ({ ...i })),
-            total: cartTotal.value,
+          const payload = {
+            items: cart.value.map(i => ({
+              id: i.id, name: i.name, price: i.price,
+              qty: i.qty, emoji: i.emoji, note: i.note || '',
+            })),
             note: orderNote.value || '',
-            status: 'pending',
-            createdAt: Date.now(),
-            acceptedAt: null,
-            completedAt: null,
           };
-          orders.value.push(order);
-          cart.value = [];
-          orderNote.value = '';
-          showSubmitModal.value = false;
-          showCartPanel.value = false;
-          saveOrders();
-          saveCart();
-          // 通过 BroadcastChannel 通知厨师
-          broadcastOrder(order);
-          // 同步到 Firebase
-          if (firebaseReady.value) pushOrderToFirebase(order);
-          showToast('🎉 下单成功！', '💕');
-        }
-
-        // ============================================================
-        // 厨师操作
-        // ============================================================
-        function acceptOrder(order) {
-          order.status = 'cooking';
-          order.acceptedAt = Date.now();
-          saveOrders();
-          if (firebaseReady.value) pushOrderToFirebase(order);
-          broadcastOrder(order);
-          showToast('✅ 已接单，开始制作', '👨‍🍳');
-        }
-
-        function completeOrder(order) {
-          order.status = 'completed';
-          order.completedAt = Date.now();
-          saveOrders();
-          if (firebaseReady.value) pushOrderToFirebase(order);
-          broadcastOrder(order);
-          showToast('✅ 订单已完成！', '🎉');
-        }
-
-        function cancelOrder(order) {
-          order.status = 'cancelled';
-          saveOrders();
-          if (firebaseReady.value) pushOrderToFirebase(order);
-          broadcastOrder(order);
-          showToast('已取消订单', '🗑️');
-        }
-
-        // ============================================================
-        // localStorage 持久化
-        // ============================================================
-        function saveOrders() {
-          try { localStorage.setItem('couple-orders', JSON.stringify(orders.value)); } catch (_) {}
-        }
-
-        function loadOrders() {
           try {
-            const saved = localStorage.getItem('couple-orders');
-            if (saved) orders.value = JSON.parse(saved);
-          } catch (_) {}
-        }
-
-        // ============================================================
-        // BroadcastChannel（同设备跨标签页实时通信）
-        // ============================================================
-        let bc = null;
-        function setupBroadcastChannel() {
-          try {
-            bc = new BroadcastChannel('couple-kitchen');
-            bc.onmessage = (event) => {
-              const msg = event.data;
-              if (!msg || !msg.type) return;
-              // 收到新订单或订单状态变更 → 自动刷新订单列表
-              if (msg.type === 'order-update' && msg.order) {
-                const idx = orders.value.findIndex(o => o.id === msg.order.id);
-                if (idx >= 0) {
-                  orders.value[idx] = msg.order;
-                } else {
-                  orders.value.push(msg.order);
-                }
-                saveOrders();
-                // 如果在厨师页面，显示提示
-                if (page.value === 'chef' && msg.order.status === 'pending') {
-                  showToast('📋 新订单来了！', '🔔');
-                }
-                if (page.value === 'guest' && msg.order.status === 'cooking') {
-                  showToast('👨‍🍳 厨师已接单，开始制作～', '🔥');
-                }
-                if (page.value === 'guest' && msg.order.status === 'completed') {
-                  showToast('🎉 订单已完成，可以开吃啦！', '🍽️');
-                }
-              }
-            };
+            const newOrder = await apiPost('/api/orders', payload);
+            orders.value.unshift(newOrder);
+            cart.value = [];
+            orderNote.value = '';
+            showSubmitModal.value = false;
+            showCartPanel.value = false;
+            saveCart();
+            showToast('🎉 下单成功！厨师正在准备～', '💕');
           } catch (e) {
-            console.warn('BroadcastChannel 不可用:', e);
+            console.error('提交订单失败:', e);
+            showToast('⚠️ 提交失败，后端未启动？', '❌');
           }
         }
 
-        function broadcastOrder(order) {
-          if (bc) {
+        // ============================================================
+        // 厨师操作（调用 FastAPI）
+        // ============================================================
+        async function acceptOrder(order) {
+          try {
+            const updated = await apiPut(`/api/orders/${order.id}/status`, { status: 'cooking' });
+            Object.assign(order, updated);
+            showToast('✅ 已接单，开始制作', '👨‍🍳');
+          } catch (e) {
+            showToast('⚠️ 操作失败', '❌');
+          }
+        }
+
+        async function completeOrder(order) {
+          try {
+            const updated = await apiPut(`/api/orders/${order.id}/status`, { status: 'completed' });
+            Object.assign(order, updated);
+            showToast('✅ 订单已完成！', '🎉');
+          } catch (e) {
+            showToast('⚠️ 操作失败', '❌');
+          }
+        }
+
+        async function cancelOrder(order) {
+          try {
+            const updated = await apiPut(`/api/orders/${order.id}/status`, { status: 'cancelled' });
+            Object.assign(order, updated);
+            showToast('已取消订单', '🗑️');
+          } catch (e) {
+            showToast('⚠️ 操作失败', '❌');
+          }
+        }
+
+        // ============================================================
+        // 从 API 加载订单
+        // ============================================================
+        async function loadOrders() {
+          try {
+            const data = await apiGet('/api/orders');
+            orders.value = data;
+            ordersCache = data;
+            // 同步到全局
+            window.__vueOrders = orders;
+          } catch (e) {
+            console.warn('加载订单失败，使用本地缓存:', e);
             try {
-              bc.postMessage({ type: 'order-update', order: JSON.parse(JSON.stringify(order)) });
+              const saved = localStorage.getItem('couple-orders');
+              if (saved) orders.value = JSON.parse(saved);
             } catch (_) {}
           }
         }
 
         // ============================================================
-        // Firebase 实时数据库（跨设备同步）
+        // 实时通信：WebSocket（主要）+ BroadcastChannel（备选）
+        // ============================================================
+        let bc = null;
+        function setupRealtime(role) {
+          // 主：WebSocket
+          connectWebSocket(role);
+          // 备：BroadcastChannel（同设备跨标签）
+          try {
+            bc = new BroadcastChannel('couple-kitchen');
+            bc.onmessage = (event) => {
+              const msg = event.data;
+              if (!msg || !msg.type) return;
+              if (msg.type === 'order-update' && msg.order) {
+                const idx = orders.value.findIndex(o => o.id === msg.order.id);
+                if (idx >= 0) { orders.value[idx] = msg.order; }
+                else { orders.value.push(msg.order); }
+              }
+            };
+          } catch (e) {
+            console.warn('BroadcastChannel 不可用:', e);
+          }
+          // 注册全局引用供 WebSocket handler 使用
+          window.__vueOrders = orders;
+          window.__vueShowToast = showToast;
+        }
+
+        // ============================================================
+        // Firebase 实时数据库（可选：跨设备同步增强）
         // ============================================================
         function initFirebase() {
           try {
@@ -1288,22 +1407,23 @@
         // 生命周期
         // ============================================================
         onMounted(() => {
+          // 初始化实时通信
+          const params = new URLSearchParams(window.location.search);
+          const initialRole = params.get('role') || 'guest';
+          setupRealtime(initialRole);
+
+          // 加载数据（API → 本地 fallback）
+          loadMenu();
           loadOrders();
           loadCart();
-          setupBroadcastChannel();
           initFirebase();
           registerSW();
           checkInstallBanner();
 
-          // 监听 URL 参数 role 自动切换（用于 PWA 不同入口）
-          const params = new URLSearchParams(window.location.search);
-          const role = params.get('role');
-          if (role === 'guest') switchToGuest();
-          else if (role === 'chef') switchToChef();
+          // 自动跳转角色
+          if (initialRole === 'guest') switchToGuest();
+          else if (initialRole === 'chef') switchToChef();
         });
-
-        // 持久化 orders 的自动监听
-        watch(orders, () => { saveOrders(); }, { deep: true });
 
         return {
           // 状态
