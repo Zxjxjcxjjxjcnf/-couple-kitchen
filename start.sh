@@ -1,6 +1,9 @@
 #!/bin/bash
-# Railway 启动脚本 — 如果 Dockerfile 不生效，这个会被 Procfile 调用
+# Railway 启动脚本（Procfile 会调用此脚本）
 set -e
-PORT="${PORT:-8000}"
-echo "[启动] 端口: $PORT"
-exec python -m uvicorn backend.main:app --host 0.0.0.0 --port "$PORT" --proxy-headers --forwarded-allow-ips='*'
+exec python -c "
+import os, uvicorn
+port = int(os.getenv('PORT', '8000'))
+print(f'[启动] 端口: {port}')
+uvicorn.run('backend.main:app', host='0.0.0.0', port=port, proxy_headers=True, forwarded_allow_ips='*')
+"
