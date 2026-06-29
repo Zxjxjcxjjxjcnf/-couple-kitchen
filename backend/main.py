@@ -17,7 +17,10 @@ async def lifespan(app: FastAPI):
     port = os.getenv("PORT", "8000")
     print(f"[OK] Couple Kitchen 后端启动中 (端口: {port})...")
     await init_db()
-    await seed_menu_data()
+    try:
+        await seed_menu_data()
+    except Exception as e:
+        print(f"[Seed] 种子数据写入跳过（数据库不可用）: {e}")
     print(f"[OK] Couple Kitchen 后端就绪 (http://0.0.0.0:{port})")
     yield
     print("[OK] Couple Kitchen 后端关闭")
