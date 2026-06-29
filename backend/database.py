@@ -5,14 +5,23 @@ import os
 
 from .config import DATABASE_URL
 
+# 判断是否在 Railway 环境
+is_railway = bool(os.getenv("MYSQL_URL") or os.getenv("DATABASE_URL"))
+
 # 创建异步引擎
 # 连接池调小一点，Railway 免费版连接数有限
+connect_args = {}
+if is_railway:
+    # Railway MySQL 要求 SSL 连接
+    connect_args["ssl"] = {}
+
 engine = create_async_engine(
     DATABASE_URL,
     echo=False,
     pool_size=5,
     max_overflow=10,
-    pool_pre_ping=True,  # 连接前检查是否有效
+    pool_pre_ping=True,
+    connect_args=connect_args,
 )
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -25,7 +34,7 @@ async def init_db():
     """初始化数据库：建表 + 迁移"""
     import aiomysql
 
-    is_railway = bool(os.getenv("DATABASE_URL"))
+    is_railway = bool(os.getenv("MYSQL_URL") or os.getenv("DATABASE_URL"))
 
     if not is_railway:
         # 本地开发：先确保数据库存在
