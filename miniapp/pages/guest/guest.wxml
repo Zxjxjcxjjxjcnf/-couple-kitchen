@@ -116,7 +116,7 @@
             <text wx:if="{{item.note}}" class="oi-note">备注：{{item.note}}</text>
           </view>
         </view>
-        <text class="oi-price">¥{{(item.price * item.qty).toFixed(1)}}</text>
+        <text class="oi-price">¥{{item.price * item.qty}}</text>
       </view>
 
       <input class="note-input global-note" placeholder="给厨师的话：辣度、忌口、用心做哦～ ❤️"

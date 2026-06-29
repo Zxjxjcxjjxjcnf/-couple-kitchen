@@ -76,7 +76,7 @@
             </view>
             <text>{{item.name}} ×{{item.qty}}</text>
           </view>
-          <text class="oi-row-price">¥{{(item.price * item.qty).toFixed(1)}}</text>
+          <text class="oi-row-price">¥{{item.price * item.qty}}</text>
         </view>
       </view>
 
@@ -84,7 +84,7 @@
 
       <view class="order-footer">
         <text class="order-time">{{util.formatTime(item.created_at)}}</text>
-        <text class="order-total">¥{{item.total.toFixed(1)}}</text>
+        <text class="order-total">¥{{item.total}}</text>
       </view>
 
       <!-- 操作按钮 -->
