@@ -7,59 +7,43 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 print("[调试] 当前所有环境变量（仅 MySQL 相关）:")
 for k, v in sorted(os.environ.items()):
     if "mysql" in k.lower() or "database" in k.lower() or "url" in k.lower():
-        # 隐藏密码
         display = v
         if "@" in v:
             display = v.split("@")[0].split(":")[0] + ":***@" + v.split("@")[1]
         print(f"  {k} = {display[:120]}")
 
 # ---- 数据库连接 URL 优先级 ----
-# Railway MySQL 给的环境变量名可能有细微差异，全部查一遍
-CANDIDATE_KEYS = [
-    "MYSQL_URL",
-    "MYSQL_PUBLIC_URL",
-    "DATABASE_URL",
-    "MYSQL_PRIVATE_URL",
-    "MYSQL_HOST",
-    "MYSQL_PORT",
-    "MYSQL_USER",
-    "MYSQL_PASSWORD",
-    "MYSQL_DATABASE",
-]
+# 1. MYSQL_PUBLIC_URL（公网地址，不依赖内部 DNS）
+# 2. MYSQL_URL / DATABASE_URL（内部地址，需要服务间联网）
+# 3. 拼接 MYSQL_HOST + MYSQL_PORT + ...（分拆变量）
+# 4. COUPLE_DATABASE_URL（自定义覆盖）
+# 5. 本地 MySQL（兜底）
 
-_raw_url = ""
-for key in CANDIDATE_KEYS:
-    val = os.getenv(key, "")
-    if val:
-        print(f"[配置] 找到 {key} = {val[:80]}...")
-        if key in ("MYSQL_HOST",):
-            # 单独的 host/port/user/password/database，需要拼成 URL
-            host = os.getenv("MYSQL_HOST", "localhost")
+_raw_url = os.getenv("MYSQL_PUBLIC_URL", "")
+if _raw_url:
+    print("[配置] 使用 MYSQL_PUBLIC_URL（公网地址）")
+else:
+    _raw_url = os.getenv("MYSQL_URL", "") or os.getenv("DATABASE_URL", "") or ""
+    if _raw_url:
+        print("[配置] 使用 MYSQL_URL（内部地址）")
+    else:
+        # 尝试拼接
+        host = os.getenv("MYSQL_HOST", "")
+        if host:
             port = os.getenv("MYSQL_PORT", "3306")
             user = os.getenv("MYSQL_USER", "root")
             pwd = os.getenv("MYSQL_PASSWORD", "")
             db = os.getenv("MYSQL_DATABASE", "couple_kitchen")
-            _raw_url = f"mysql+aiomysql://{user}:{pwd}@{host}:{port}/{db}"
-            print(f"[配置] 已拼接 URL: {_raw_url[:80]}...")
-            break
-        else:
-            _raw_url = val
-            break
+            _raw_url = f"mysql://{user}:{pwd}@{host}:{port}/{db}"
+            print("[配置] 通过 MYSQL_HOST/MYSQL_PORT 等拼接 URL")
 
 if _raw_url:
-    # Railway 给的 URL 是 mysql://...，aiomysql 需要 mysql+aiomysql://
     if _raw_url.startswith("mysql://"):
         _raw_url = _raw_url.replace("mysql://", "mysql+aiomysql://", 1)
-        print(f"[配置] 从环境变量读取到 MYSQL_URL（已转换格式）")
-    elif _raw_url.startswith("mysql+aiomysql://"):
-        print(f"[配置] 从环境变量读取到 DATABASE_URL")
-    else:
-        print(f"[配置] 从环境变量读取到其他数据库 URL")
     DATABASE_URL = _raw_url
+    print(f"[配置] DATABASE_URL 已设置")
 else:
-    # 本地开发用默认配置
     DATABASE_URL = "mysql+aiomysql://root:82512314dw@127.0.0.1:3306/couple_kitchen"
     print("[配置] 未找到环境变量，使用本地 MySQL")
 
-# 允许通过自定义变量覆盖
 DATABASE_URL = os.getenv("COUPLE_DATABASE_URL", DATABASE_URL)
