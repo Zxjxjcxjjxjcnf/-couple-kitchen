@@ -13,7 +13,9 @@ is_railway = bool(os.getenv("MYSQL_URL") or os.getenv("DATABASE_URL"))
 connect_args = {}
 if is_railway:
     # Railway MySQL 要求 SSL 连接
-    connect_args["ssl"] = {}
+    # pymysql 接受 ssl=True 或 ssl={"ca": None} 或 ssl={}
+    import ssl as ssl_mod
+    connect_args["ssl"] = {"ssl": True}
 
 engine = create_async_engine(
     DATABASE_URL,
@@ -64,8 +66,8 @@ async def init_db():
         print("[DB] 表结构已同步")
     except Exception as e:
         print(f"[DB] 建表失败: {e}")
-        print("[DB] 请检查 DATABASE_URL 是否正确，以及数据库是否可访问")
-        raise  # 让应用启动失败，Railway 会显示错误日志
+        print("[DB] 数据库不可访问，改用无数据库模式（仅提供前端页面）")
+        # 不 raise，让应用能启动，只是数据库功能不可用
 
     # 迁移：添加 image_url 列（如果尚不存在）
     try:
