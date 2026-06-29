@@ -4,7 +4,7 @@ App({
     // FastAPI 后端地址（部署后的 HTTPS 链接）
     // 本地测试用：http://localhost:8000
     // 生产环境换成你的 Railway 域名
-    API_BASE: 'https://your-railway-app.up.railway.app',
+    API_BASE: 'https://web-production-666.up.railway.app',
     
     // 当前 WebSocket 连接
     ws: null,
