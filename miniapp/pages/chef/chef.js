@@ -19,6 +19,12 @@ Page({
       { key: 'breakfast', label: '早餐', emoji: '🥟' },
     ],
 
+    // 计算后的数据（WXML 不能用 getter）
+    filteredOrders: [],
+    orderCounts: {},
+    currentTabLabel: '',
+    catMenuList: [],
+
     // 添加菜品
     showAddDishModal: false,
     newDish: {
@@ -27,22 +33,22 @@ Page({
     },
   },
 
-  // 计算属性（用 getter 模拟）
-  get filteredOrders() {
+  // 更新计算数据（替代 getter，WXML 只能用 data）
+  computeOrders() {
+    const { orders, chefTab, statusTabs } = this.data;
     const statusMap = { pending: 'pending', cooking: 'cooking', completed: 'completed' };
-    return this.data.orders.filter(o => o.status === statusMap[this.data.chefTab]);
-  },
-  get currentTabLabel() {
-    const t = this.data.statusTabs.find(t => t.key === this.data.chefTab);
-    return t ? t.label : '';
-  },
-  get orderCounts() {
+    const filtered = orders.filter(o => o.status === statusMap[chefTab]);
+    const t = statusTabs.find(t => t.key === chefTab);
     const counts = {};
-    this.data.statusTabs.forEach(t => {
-      if (t.key === 'menu') return;
-      counts[t.key] = this.data.orders.filter(o => o.status === t.key).length;
+    statusTabs.forEach(st => {
+      if (st.key === 'menu') return;
+      counts[st.key] = orders.filter(o => o.status === st.key).length;
     });
-    return counts;
+    this.setData({
+      filteredOrders: filtered,
+      currentTabLabel: t ? t.label : '',
+      orderCounts: counts,
+    });
   },
 
   onLoad() {
@@ -50,10 +56,12 @@ Page({
     app.connectWS('chef');
     this.loadOrders();
     this.loadMenu();
+    this.computeOrders();
   },
 
   onShow() {
     this.loadOrders();
+    this.computeOrders();
   },
 
   // 加载订单
@@ -61,6 +69,7 @@ Page({
     try {
       const data = await api.get('/api/orders');
       this.setData({ orders: data });
+      this.computeOrders();
     } catch(e) {
       console.warn('加载订单失败', e);
     }
@@ -72,16 +81,31 @@ Page({
       const data = await api.get('/api/menu');
       if (data && data.length > 0) {
         this.setData({ menuItems: data });
+        this.buildCatMenu();
       }
     } catch(e) {
       console.warn('加载菜单失败', e);
     }
   },
 
+  // 构建分类菜单列表（WXML 不能用 filter）
+  buildCatMenu() {
+    const { categories, menuItems } = this.data;
+    const catMenuList = categories.map(cat => ({
+      key: cat.key,
+      emoji: cat.emoji,
+      label: cat.label,
+      count: menuItems.filter(i => i.category === cat.key).length,
+      items: menuItems.filter(i => i.category === cat.key),
+    }));
+    this.setData({ catMenuList });
+  },
+
   // 切换 Tab
   switchTab(e) {
     const key = e.currentTarget.dataset.key;
     this.setData({ chefTab: key });
+    this.computeOrders();
     if (key === 'menu') this.loadMenu();
   },
 
@@ -91,6 +115,7 @@ Page({
     try {
       await api.put(`/api/orders/${id}/status`, { status: 'cooking' });
       this.loadOrders();
+      this.computeOrders();
       util.showToast('✅ 已接单', 'none');
     } catch(e) {
       util.showToast('操作失败', 'none');
@@ -103,6 +128,7 @@ Page({
     try {
       await api.put(`/api/orders/${id}/status`, { status: 'completed' });
       this.loadOrders();
+      this.computeOrders();
       util.showToast('✅ 已完成', 'none');
     } catch(e) {
       util.showToast('操作失败', 'none');
@@ -115,6 +141,7 @@ Page({
     try {
       await api.put(`/api/orders/${id}/status`, { status: 'cancelled' });
       this.loadOrders();
+      this.computeOrders();
       util.showToast('已取消', 'none');
     } catch(e) {
       util.showToast('操作失败', 'none');
@@ -187,6 +214,7 @@ Page({
   onWSMessage(msg) {
     if (msg.type === 'order_new' || msg.type === 'order_update') {
       this.loadOrders();
+      this.computeOrders();
       if (msg.type === 'order_new') {
         wx.showToast({ title: '📋 新订单来了！', icon: 'none', duration: 2000 });
         // 自动切换到待接单

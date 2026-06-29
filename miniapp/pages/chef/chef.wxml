@@ -34,12 +34,12 @@
         <button class="add-btn" bindtap="showAddDish">＋ 添加菜品</button>
       </view>
 
-      <view wx:for="{{categories}}" wx:for-item="cat" wx:key="key" class="cat-group">
+      <view wx:for="{{catMenuList}}" wx:key="key" class="cat-group">
         <view class="cat-title">
-          <text>{{cat.emoji}} {{cat.label}}</text>
-          <text class="cat-count">({{menuItems.filter(i => i.category === cat.key).length}})</text>
+          <text>{{item.emoji}} {{item.label}}</text>
+          <text class="cat-count">({{item.count}})</text>
         </view>
-        <view wx:for="{{menuItems.filter(i => i.category === cat.key)}}" wx:key="id" class="manage-card">
+        <view wx:for="{{item.items}}" wx:key="id" class="manage-card">
           <view class="manage-img {{item.image_url ? 'has-img' : ''}}"
                 style="background: {{item.bg || 'linear-gradient(135deg,#fdf2f4,#fce7eb)'}}">
             <image wx:if="{{item.image_url}}" src="{{item.image_url}}" mode="aspectFill" class="manage-img-real" />
