@@ -1,0 +1,110 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60rpx 48rpx;
+  position: relative;
+  overflow: hidden;
+}
+
+.deco-hearts { position: absolute; top: 0; left: 0; right: 0; height: 200px; pointer-events: none; }
+.deco-h { position: absolute; }
+
+.logo-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 32rpx;
+  position: relative;
+  z-index: 1;
+}
+.logo-icon {
+  font-size: 88rpx;
+  margin-bottom: 20rpx;
+  animation: bounceSoft 2s ease-in-out infinite;
+}
+@keyframes bounceSoft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8rpx); }
+}
+.logo-title { font-size: 44rpx; font-weight: 800; letter-spacing: 2rpx; }
+.logo-sub {
+  font-size: 26rpx;
+  color: #fda4af;
+  margin-top: 12rpx;
+}
+.c-rose { color: #f43f5e; }
+.c-amber { color: #f59e0b; }
+
+.subtitle {
+  font-size: 26rpx;
+  color: #9ca3af;
+  margin-bottom: 48rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.role-cards {
+  width: 100%;
+  max-width: 400rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.role-card {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 32rpx 36rpx;
+  border-radius: 28rpx;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.role-card:active {
+  transform: scale(0.97);
+}
+
+.role-guest {
+  background: linear-gradient(135deg, #fdf2f4, #fce7eb);
+  box-shadow: 0 4rpx 20rpx rgba(244, 63, 94, 0.10);
+}
+.role-chef {
+  background: linear-gradient(135deg, #fefce8, #fef9c3);
+  box-shadow: 0 4rpx 20rpx rgba(245, 158, 11, 0.12);
+}
+
+.role-icon-wrap {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 24rpx;
+  background: rgba(255,255,255,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2rpx 12rpx rgba(244,63,94,0.08);
+}
+.role-icon { font-size: 40rpx; }
+
+.role-info { flex: 1; }
+.role-name { font-size: 30rpx; font-weight: 700; margin-bottom: 4rpx; }
+.role-desc { font-size: 22rpx; color: rgba(244,63,94,0.7); line-height: 1.4; }
+.role-chef .role-desc { color: rgba(245,158,11,0.7); }
+
+.role-arrow {
+  font-size: 32rpx;
+  opacity: 0.4;
+}
+
+.footer-text {
+  position: absolute;
+  bottom: 40rpx;
+  font-size: 20rpx;
+  color: #d1d5db;
+  letter-spacing: 4rpx;
+}

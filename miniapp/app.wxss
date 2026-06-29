@@ -1,0 +1,79 @@
+/* 全局样式 */
+page {
+  background-color: #FFF9F5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  color: #333;
+  box-sizing: border-box;
+}
+
+/* 工具类 */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.flex-1 { flex: 1; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.flex-wrap { flex-wrap: wrap; }
+.gap-1 { gap: 4rpx; }
+.gap-2 { gap: 8rpx; }
+.gap-3 { gap: 12rpx; }
+.gap-4 { gap: 16rpx; }
+
+.text-xs { font-size: 22rpx; }
+.text-sm { font-size: 26rpx; }
+.text-base { font-size: 28rpx; }
+.text-lg { font-size: 32rpx; }
+.text-xl { font-size: 36rpx; }
+.text-2xl { font-size: 44rpx; }
+.text-3xl { font-size: 52rpx; }
+.text-center { text-align: center; }
+
+.font-bold { font-weight: 600; }
+.font-black { font-weight: 800; }
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rounded-xl { border-radius: 16rpx; }
+.rounded-2xl { border-radius: 20rpx; }
+.rounded-3xl { border-radius: 28rpx; }
+.rounded-full { border-radius: 9999px; }
+
+/* 柔和的阴影 */
+.shadow-soft {
+  box-shadow: 0 4rpx 24rpx rgba(244, 63, 94, 0.08);
+}
+.shadow-card {
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+/* 粉色渐变按钮 */
+.btn-primary {
+  background: linear-gradient(135deg, #f43f5e, #e11d48);
+  color: #fff;
+  border: none;
+  border-radius: 20rpx;
+  padding: 20rpx 40rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-primary:active {
+  opacity: 0.9;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 2px;
+  height: 2px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(244, 63, 94, 0.2);
+  border-radius: 99px;
+}

@@ -1,0 +1,136 @@
+<!-- 厨师工作台 -->
+<view class="page">
+  <!-- 返回首页 -->
+  <view class="top-bar">
+    <text class="back-btn" bindtap="goHome">← 首页</text>
+    <text class="top-title">👨‍🍳 厨师工作台</text>
+    <view class="top-right"><text class="chef-guest-btn" bindtap="goGuest">客人端</text></view>
+  </view>
+  
+  <!-- 状态 Tab -->
+  <view class="tabs">
+    <view wx:for="{{statusTabs}}" wx:key="key"
+          class="tab-item {{chefTab === item.key ? 'tab-active' : ''}}"
+          catchtap="switchTab" data-key="{{item.key}}">
+      <text>{{item.label}}</text>
+      <text wx:if="{{orderCounts[item.key] > 0}}" class="tab-badge {{item.key}}">{{orderCounts[item.key]}}</text>
+    </view>
+  </view>
+
+  <!-- 订单列表 -->
+  <scroll-view class="order-list" scroll-y enhanced show-scrollbar="{{false}}">
+    <!-- 空状态 -->
+    <view wx:if="{{filteredOrders.length === 0}}" class="empty-state">
+      <text class="empty-icon">📋</text>
+      <text class="empty-text">暂无 {{currentTabLabel}} 订单</text>
+      <text wx:if="{{chefTab === 'pending'}}" class="empty-sub">等待客人下单中～</text>
+      <button wx:if="{{chefTab === 'menu'}}" class="chef-menu-btn" bindtap="goGuest">🍽️ 客人点餐</button>
+    </view>
+
+    <!-- 菜单管理（chefTab === 'menu'） -->
+    <view wx:if="{{chefTab === 'menu'}}" class="menu-manage">
+      <view class="manage-header">
+        <text class="manage-title">📋 菜品管理</text>
+        <button class="add-btn" bindtap="showAddDish">＋ 添加菜品</button>
+      </view>
+
+      <view wx:for="{{categories}}" wx:for-item="cat" wx:key="key" class="cat-group">
+        <view class="cat-title">
+          <text>{{cat.emoji}} {{cat.label}}</text>
+          <text class="cat-count">({{menuItems.filter(i => i.category === cat.key).length}})</text>
+        </view>
+        <view wx:for="{{menuItems.filter(i => i.category === cat.key)}}" wx:key="id" class="manage-card">
+          <view class="manage-img {{item.image_url ? 'has-img' : ''}}"
+                style="background: {{item.bg || 'linear-gradient(135deg,#fdf2f4,#fce7eb)'}}">
+            <image wx:if="{{item.image_url}}" src="{{item.image_url}}" mode="aspectFill" class="manage-img-real" />
+            <text wx:else>{{item.emoji}}</text>
+            <view class="manage-upload" catchtap="uploadDishImg" data-id="{{item.id}}">📷</view>
+          </view>
+          <view class="manage-info">
+            <text class="manage-name">{{item.name}}</text>
+            <text class="manage-price">¥{{item.price}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 订单卡片 -->
+    <view wx:for="{{filteredOrders}}" wx:key="id" class="order-card">
+      <view class="order-header">
+        <view class="order-id-row">
+          <text>📋</text>
+          <text class="order-id">#{{item.id}}</text>
+        </view>
+        <view class="order-status {{item.status}}">
+          <view class="status-dot {{item.status}}"></view>
+          <text>{{statusLabel(item.status)}}</text>
+        </view>
+      </view>
+
+      <view class="order-items">
+        <view wx:for="{{item.items}}" wx:key="id" class="oi-row">
+          <view class="oi-row-left">
+            <view class="oi-img-wrap">
+              <image wx:if="{{item.image_url}}" src="{{item.image_url}}" mode="aspectFill" class="oi-img" />
+              <text wx:else>{{item.emoji}}</text>
+            </view>
+            <text>{{item.name}} ×{{item.qty}}</text>
+          </view>
+          <text class="oi-row-price">¥{{(item.price * item.qty).toFixed(1)}}</text>
+        </view>
+      </view>
+
+      <text wx:if="{{item.note}}" class="order-note">💬 备注：{{item.note}}</text>
+
+      <view class="order-footer">
+        <text class="order-time">{{util.formatTime(item.created_at)}}</text>
+        <text class="order-total">¥{{item.total.toFixed(1)}}</text>
+      </view>
+
+      <!-- 操作按钮 -->
+      <view wx:if="{{item.status === 'pending'}}" class="order-actions">
+        <button class="action-btn action-accept" catchtap="acceptOrder" data-id="{{item.id}}">✅ 接单</button>
+        <button class="action-btn action-cancel" catchtap="cancelOrder" data-id="{{item.id}}">取消订单</button>
+      </view>
+      <view wx:if="{{item.status === 'cooking'}}" class="order-actions">
+        <button class="action-btn action-complete" catchtap="completeOrder" data-id="{{item.id}}">✅ 完成制作</button>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 添加菜品弹窗 -->
+  <view wx:if="{{showAddDishModal}}" class="modal-mask" catchtap="hideAddDish">
+    <view class="modal-content add-dish-modal" catchtap="noop">
+      <text class="add-dish-title">➕ 添加新菜品</text>
+
+      <view class="form-group">
+        <text class="form-label">菜品名</text>
+        <input class="form-input" placeholder="如：宫保鸡丁" model:value="{{newDish.name}}" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">分类</text>
+        <picker model:value="{{newDish.category}}" range="{{categories}}" range-key="label"
+                bindchange="onCategoryChange" class="form-picker">
+          <text>{{newDish.categoryName}}</text>
+        </picker>
+      </view>
+      <view class="form-group">
+        <text class="form-label">价格 (元)</text>
+        <input class="form-input" type="digit" placeholder="如：28" model:value="{{newDish.price}}" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">Emoji 图标</text>
+        <input class="form-input" placeholder="如：🍗" model:value="{{newDish.emoji}}" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">描述</text>
+        <input class="form-input" placeholder="简短描述菜品" model:value="{{newDish.desc}}" />
+      </view>
+
+      <view class="modal-actions">
+        <view class="modal-btn modal-btn-cancel" catchtap="hideAddDish">取消</view>
+        <view class="modal-btn modal-btn-primary" catchtap="addDish">确认添加</view>
+      </view>
+    </view>
+  </view>
+</view>

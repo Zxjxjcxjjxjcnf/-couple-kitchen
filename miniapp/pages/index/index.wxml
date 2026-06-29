@@ -1,0 +1,51 @@
+<!-- 首页：角色选择 -->
+<view class="page">
+  <!-- 装饰爱心 -->
+  <view class="deco-hearts">
+    <text class="deco-h" style="top:20px;left:10%;font-size:60px;opacity:0.04;transform:rotate(12deg)">❤️</text>
+    <text class="deco-h" style="top:50px;right:15%;font-size:40px;opacity:0.05;transform:rotate(-12deg)">❤️</text>
+    <text class="deco-h" style="top:80px;left:40%;font-size:30px;opacity:0.03;transform:rotate(45deg)">❤️</text>
+  </view>
+
+  <!-- Logo -->
+  <view class="logo-area">
+    <text class="logo-icon">🍳</text>
+    <text class="logo-title">
+      <text class="c-rose">情侣私厨</text>
+      <text class="c-amber">点餐</text>
+      <text class="c-rose">❤️</text>
+    </text>
+    <text class="logo-sub">💕 为爱下厨 💕</text>
+  </view>
+
+  <text class="subtitle">今天你想以什么身份进入？</text>
+
+  <!-- 角色选择卡片 -->
+  <view class="role-cards">
+    <!-- 客人 -->
+    <view class="role-card role-guest" bindtap="goGuest">
+      <view class="role-icon-wrap">
+        <text class="role-icon">🍽️</text>
+      </view>
+      <view class="role-info">
+        <text class="role-name c-rose">我是客人</text>
+        <text class="role-desc">点菜 · 备注口味 · 提交订单</text>
+      </view>
+      <text class="role-arrow">→</text>
+    </view>
+
+    <!-- 厨师 -->
+    <view class="role-card role-chef" bindtap="goChef">
+      <view class="role-icon-wrap">
+        <text class="role-icon">👨‍🍳</text>
+      </view>
+      <view class="role-info">
+        <text class="role-name c-amber">我是厨师</text>
+        <text class="role-desc">查看订单 · 开始制作 · 完成订单</text>
+      </view>
+      <text class="role-arrow">→</text>
+    </view>
+  </view>
+
+  <text class="footer-text">✦ 只为两个人做饭 ✦</text>
+</view>

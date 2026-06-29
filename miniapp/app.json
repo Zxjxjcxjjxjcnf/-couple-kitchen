@@ -1,0 +1,17 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/guest/guest",
+    "pages/chef/chef"
+  ],
+  "window": {
+    "navigationBarTitleText": "情侣私厨",
+    "navigationBarTextStyle": "white",
+    "navigationBarBackgroundColor": "#f43f5e",
+    "backgroundColor": "#FFF9F5",
+    "backgroundTextStyle": "light"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

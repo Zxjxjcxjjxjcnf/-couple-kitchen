@@ -1,0 +1,136 @@
+<!-- 客人点餐页 -->
+<view class="page">
+  <!-- 返回首页 -->
+  <view class="top-bar">
+    <text class="back-btn" bindtap="goHome">← 首页</text>
+    <text class="top-title">🍳 情侣私厨</text>
+    <view class="top-right"></view>
+  </view>
+  
+  <!-- 左侧分类 + 右侧菜品 -->
+  <view class="content-wrap">
+    <!-- 左侧分类导航 -->
+    <scroll-view class="left-nav" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="nav-list">
+        <view wx:for="{{categories}}" wx:key="key"
+              class="nav-item {{category === item.key ? 'nav-active' : ''}}"
+              catchtap="selectCategory" data-key="{{item.key}}">
+          <text class="nav-emoji">{{item.emoji}}</text>
+          <text class="nav-label">{{item.label}}</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <!-- 右侧菜品列表 -->
+    <scroll-view class="right-list" scroll-y enhanced show-scrollbar="{{false}}" scroll-into-view="{{scrollTo}}">
+      <view class="menu-wrap">
+        <view class="menu-header">
+          <text class="menu-cat-label">{{currentCatLabel}}</text>
+          <text class="menu-count">{{filteredMenu.length}} 道菜</text>
+        </view>
+
+        <view wx:for="{{filteredMenu}}" wx:key="id" class="menu-card" data-item="{{item}}" catchtap="showDetail">
+          <view class="menu-card-inner">
+            <!-- 图片 / Emoji -->
+            <view class="menu-img {{item.image_url ? 'has-img' : ''}}"
+                  style="background: {{item.bg || 'linear-gradient(135deg,#fdf2f4,#fce7eb)'}}">
+              <image wx:if="{{item.image_url}}" src="{{item.image_url}}" mode="aspectFill" class="menu-img-real" />
+              <text wx:else class="menu-emoji">{{item.emoji}}</text>
+            </view>
+            <!-- 信息 -->
+            <view class="menu-info">
+              <view class="menu-name-row">
+                <text class="menu-name">{{item.name}}</text>
+                <text class="menu-price">¥{{item.price}}</text>
+              </view>
+              <text class="menu-desc">{{item.desc}}</text>
+              <view class="menu-bottom">
+                <text class="menu-sold">已售 {{item.sold}}</text>
+                <view class="menu-add-btn" catchtap="addToCart" data-item="{{item}}">
+                  <text>＋</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 底部购物车栏 -->
+  <view wx:if="{{cart.length > 0}}" class="cart-bar">
+    <view class="cart-bar-inner" bindtap="toggleCart">
+      <view class="cart-left" bindtap="toggleCart">
+        <view class="cart-icon-wrap">
+          <text class="cart-icon">🛒</text>
+          <text class="cart-badge">{{cartTotalQty}}</text>
+        </view>
+        <view class="cart-summary">
+          <text class="cart-count">共 {{cartTotalQty}} 件</text>
+          <text class="cart-total">¥{{cartTotal}}</text>
+        </view>
+      </view>
+      <button class="btn-submit" bindtap="submitOrder">提交订单</button>
+    </view>
+  </view>
+
+  <!-- 菜品详情弹窗 -->
+  <view wx:if="{{showDetail}}" class="modal-mask" catchtap="hideDetail">
+    <view class="modal-content" catchtap="noop">
+      <view class="modal-img {{detailItem.image_url ? 'has-img' : ''}}"
+            style="background: {{detailItem.bg || 'linear-gradient(135deg,#fdf2f4,#fce7eb)'}}">
+        <image wx:if="{{detailItem.image_url}}" src="{{detailItem.image_url}}" mode="aspectFill" class="menu-img-real" />
+        <text wx:else class="modal-emoji">{{detailItem.emoji}}</text>
+      </view>
+      <text class="modal-name">{{detailItem.name}}</text>
+      <text class="modal-price">¥{{detailItem.price}}</text>
+      <text class="modal-desc">{{detailItem.desc}}</text>
+
+      <view class="qty-selector">
+        <view class="qty-btn" catchtap="detailQtyDec">−</view>
+        <text class="qty-num">{{detailQty}}</text>
+        <view class="qty-btn qty-plus" catchtap="detailQtyInc">+</view>
+      </view>
+
+      <input class="note-input" placeholder="口味备注… 比如：少辣、不要葱花"
+             model:value="{{detailNote}}" />
+
+      <view class="modal-actions">
+        <view class="modal-btn modal-btn-cancel" catchtap="hideDetail">取消</view>
+        <view class="modal-btn modal-btn-primary" catchtap="addFromDetail">加入购物车</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 提交订单确认弹窗 -->
+  <view wx:if="{{showSubmit}}" class="modal-mask" catchtap="hideSubmit">
+    <scroll-view class="modal-content submit-content" scroll-y catchtap="noop">
+      <text class="submit-title">📋 确认订单</text>
+      <text class="submit-subtitle">请检查菜品和备注信息</text>
+
+      <view wx:for="{{cart}}" wx:key="id" class="order-item">
+        <view class="oi-left">
+          <text class="oi-emoji">{{item.emoji}}</text>
+          <view class="oi-info">
+            <text class="oi-name">{{item.name}} ×{{item.qty}}</text>
+            <text wx:if="{{item.note}}" class="oi-note">备注：{{item.note}}</text>
+          </view>
+        </view>
+        <text class="oi-price">¥{{(item.price * item.qty).toFixed(1)}}</text>
+      </view>
+
+      <input class="note-input global-note" placeholder="给厨师的话：辣度、忌口、用心做哦～ ❤️"
+             model:value="{{orderNote}}" />
+
+      <view class="total-row">
+        <text>共 {{cartTotalQty}} 件</text>
+        <text class="total-price">¥{{cartTotal}}</text>
+      </view>
+
+      <view class="modal-actions">
+        <view class="modal-btn modal-btn-cancel" catchtap="hideSubmit">返回修改</view>
+        <view class="modal-btn modal-btn-primary" catchtap="confirmOrder">❤️ 确认下单</view>
+      </view>
+    </scroll-view>
+  </view>
+</view>
