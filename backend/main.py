@@ -42,6 +42,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ---- 健康检查 ----
+from fastapi.responses import JSONResponse
+@app.get("/health")
+async def health():
+    return JSONResponse({"status": "ok", "app": "Couple Kitchen"})
+
 # ---- 注册路由 ----
 app.include_router(menu_router)
 app.include_router(orders_router)
